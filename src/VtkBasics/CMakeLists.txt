@@ -19,7 +19,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-add_library(VtkBasics STATIC
+add_library(VtkBasics SHARED
 	@_VTK_@
 )
 

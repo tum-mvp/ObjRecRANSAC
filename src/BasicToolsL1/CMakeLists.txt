@@ -8,7 +8,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-add_library(BasicToolsL1 STATIC
+add_library(BasicToolsL1 SHARED
 	@_BTL1_CUR_@
 	@_BTL1_EIG3x3_@
 )

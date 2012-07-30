@@ -31,10 +31,10 @@ link_directories(
 	${OpenCV_LIB_DIR}
 )
 
+link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS})
+
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
-
-link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS})
 
 add_executable(ObjRecRANSACRun ./main.cpp)

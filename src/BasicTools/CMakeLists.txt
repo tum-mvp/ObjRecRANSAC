@@ -15,6 +15,7 @@ FILE(GLOB _CG_DS_       ComputationalGeometry/DataStructures/*.cpp)
 FILE(GLOB _CG_DS_BSP_   ComputationalGeometry/DataStructures/BSPTree/*.cpp)
 FILE(GLOB _CG_DS_KD_    ComputationalGeometry/DataStructures/KdTree/*.cpp)
 FILE(GLOB _CG_DS_OCT_   ComputationalGeometry/DataStructures/Octree/*.cpp)
+FILE(GLOB _ORR_DS_      DataStructures/*.cpp)
 FILE(GLOB _GRAPH_       Graph/*.cpp)
 FILE(GLOB _LA_          LinearAlgebra/*.cpp)
 FILE(GLOB _STOCH_       Stochastics/*.cpp)
@@ -29,13 +30,14 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-add_library(BasicTools STATIC
+add_library(BasicTools SHARED
 	@_AUX_@
 	@_CG_ALGS_@
 	@_CG_DS_@
 	@_CG_DS_BSP_@
 	@_CG_DS_KD_@
 	@_CG_DS_OCT_@
+  @_ORR_DS_@
 	@_GRAPH_@
 	@_LA_@
 	@_STOCH_@

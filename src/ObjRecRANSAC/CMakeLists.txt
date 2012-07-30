@@ -8,7 +8,6 @@ IF(NOT VTK_FOUND)
 If VTK is installed but cmake can not find it, set the VTK_DIR entry to the folder which contains the file VTKConfig.cmake")
 ENDIF(NOT VTK_FOUND)
 
-
 FILE(GLOB _ORR_CUR_     *.cpp)
 FILE(GLOB _ORR_ALGS_    Algorithms/*.cpp)
 FILE(GLOB _ORR_DS_      DataStructures/*.cpp)
@@ -21,6 +20,7 @@ FILE(GLOB _ORR_SH_      Shapes/*.cpp)
 
 include_directories(
 	${VTK_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 	..
 )
 
@@ -28,7 +28,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-add_library(ObjRecRANSAC STATIC
+add_library(ObjRecRANSAC SHARED
 	@_ORR_CUR_@
 	@_ORR_ALGS_@
 	@_ORR_DS_@
@@ -39,4 +39,5 @@ add_library(ObjRecRANSAC STATIC
 	@_ORR_DS_RI_@
 	@_ORR_SH_@
 )
+target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
 
