@@ -44,3 +44,5 @@ add_library(BasicTools SHARED
 	@_MYVTK_@
 )
 
+target_link_libraries(BasicTools vtkRendering)
+
