@@ -22,4 +22,7 @@ endif()
 add_library(VtkBasics SHARED
 	@_VTK_@
 )
-
+add_library(VtkBasicsStatic STATIC
+  @_VTK_@
+)
+set_target_properties(VtkBasicsStatic PROPERTIES OUTPUT_NAME VtkBasics)

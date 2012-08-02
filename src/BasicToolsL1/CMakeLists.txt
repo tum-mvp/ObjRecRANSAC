@@ -12,4 +12,9 @@ add_library(BasicToolsL1 SHARED
 	@_BTL1_CUR_@
 	@_BTL1_EIG3x3_@
 )
+add_library(BasicToolsL1Static STATIC
+	@_BTL1_CUR_@
+	@_BTL1_EIG3x3_@
+)
+set_target_properties(BasicToolsL1Static PROPERTIES OUTPUT_NAME BasicToolsL1)
 

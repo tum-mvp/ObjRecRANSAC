@@ -41,3 +41,16 @@ add_library(ObjRecRANSAC SHARED
 )
 target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
 
+add_library(ObjRecRANSACStatic STATIC
+	@_ORR_CUR_@
+	@_ORR_ALGS_@
+	@_ORR_DS_@
+	@_ORR_DS_HTBS_@
+	@_ORR_DS_HTKT_@
+	@_ORR_DS_OKD_@
+	@_ORR_DS_ORRO_@
+	@_ORR_DS_RI_@
+	@_ORR_SH_@
+)
+set_target_properties(ObjRecRANSACStatic PROPERTIES OUTPUT_NAME ObjRecRANSAC)
+

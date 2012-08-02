@@ -43,6 +43,20 @@ add_library(BasicTools SHARED
 	@_STOCH_@
 	@_MYVTK_@
 )
-
 target_link_libraries(BasicTools vtkRendering)
+
+add_library(BasicToolsStatic STATIC
+	@_AUX_@
+	@_CG_ALGS_@
+	@_CG_DS_@
+	@_CG_DS_BSP_@
+	@_CG_DS_KD_@
+	@_CG_DS_OCT_@
+  @_ORR_DS_@
+	@_GRAPH_@
+	@_LA_@
+	@_STOCH_@
+	@_MYVTK_@
+)
+set_target_properties(BasicToolsStatic PROPERTIES OUTPUT_NAME BasicTools)
 
