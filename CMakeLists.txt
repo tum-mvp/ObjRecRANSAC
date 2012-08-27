@@ -1,6 +1,10 @@
 project(ObjRecRANSACRun)
 cmake_minimum_required(VERSION 2.6)
 
+IF(USE_CUDA)
+  add_definitions(-DUSE_CUDA)
+ENDIF(USE_CUDA)
+
 find_package(VTK)
 
 IF(NOT VTK_FOUND)
@@ -42,10 +46,13 @@ FIND_PACKAGE(CUDA)
 
 link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt)
 
-CUDA_ADD_EXECUTABLE(ObjRecRANSACRun
-  src/ObjRecRANSAC/AcceptHypothesisAlgo.cu
-  main.cpp
-  )
-
+if(USE_CUDA)
+  CUDA_ADD_EXECUTABLE(ObjRecRANSACRun
+    src/ObjRecRANSAC/AcceptHypothesisAlgo.cu
+    main.cpp
+    )
+else()
+  add_executable(ObjRecRANSACRun main.cpp)
+endif()
 
 

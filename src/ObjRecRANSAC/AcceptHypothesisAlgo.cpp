@@ -1,6 +1,8 @@
 #include "AcceptHypothesisAlgo.h"
 
+#ifdef USE_CUDA
 extern void cudaAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* transforms, int num_transforms, int* matches, int gMatchThresh, int gPenaltyThresh);
+#endif
 
 void cpuAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* transforms, int num_transforms, int* matches, int gMatchThresh, int gPenaltyThresh)
 {
@@ -47,7 +49,11 @@ void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, co
     // create results structure
     int* matches = new int[num_transforms];
 
+#ifdef USE_CUDA
     cudaAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
+#else
+    cpuAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
+#endif
     
     // Convert resulting transformations back to objRANSAC float type
     for (int i = 0 ; i < num_transforms*12 ; ++i ) info->transforms[i] = transforms[i];
