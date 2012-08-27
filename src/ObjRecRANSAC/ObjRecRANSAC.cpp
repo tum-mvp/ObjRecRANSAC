@@ -457,20 +457,41 @@ void *accept(void *data)
 				info->pair_result[pair_id[i]].model_entry = info->model_entries[i];
 				info->pair_result[pair_id[i]].transform = transform;
 			}
+#if defined USE_CUDA
+            else
+            {
+                std::cout << "Wtf this can happen???" << std::endl;
+            }
+#endif
+
 		}
 	}
 
 	return NULL;
 }
+#if defined USE_CUDA
+extern void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage);
+#endif
 
 //=============================================================================================================================
 
 void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses)
 {
+    //[i10 Change] - When there are no Hypotheses, it makes no sense to accept them or not
+    // In the original code this is not a problem since in the 'acce[t' method, it loops 0 times (0 Hypotheses!)
+    // In the CUDA version this IS a problem, since we are trying to create 0 blocks per grid, which yields an error.
+    if (mNumOfHypotheses == 0)
+    {
+        return;
+    }
+    
 #ifdef OBJ_REC_RANSAC_VERBOSE
 	printf("ObjRecRANSAC::%s(): checking the hypotheses ... ", __func__); fflush(stdout);
 #endif
-
+    
+#if defined USE_CUDA
+    mNumOfThreads = 1;
+#endif
 	double* rigid_transform = mRigidTransforms;
 	const double **model_points = mPointSetPointers;
 	DatabaseModelEntry **model_entries = mModelEntryPointers;
@@ -511,13 +532,17 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 	thread_info[i].model_entries = model_entries;
 	thread_info[i].pair_ids = pair_ids;
 	thread_info[i].pair_result = new ThreadResult[num_of_pairs];
-	// Create the last thread and let it work
-	pthread_create(&threads[i], NULL, accept, (void*)&thread_info[i]);
-
+	    
+#if defined USE_CUDA
+    ::acceptHypotheses(&thread_info[i], gMatchThresh, gPenaltyThresh, gImage);
+#else
+    // Create the last thread and let it work
+    pthread_create(&threads[i], NULL, accept, (void*)&thread_info[i]);
 	// Wait for all threads
 	for ( i = 0 ; i < mNumOfThreads ; ++i )
 		pthread_join(threads[i], NULL);
-
+#endif
+    
 	// Some variables needed for the hypothesis acceptance
 	AcceptedHypothesis accepted;
 	int k;
