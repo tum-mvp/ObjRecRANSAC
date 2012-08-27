@@ -272,7 +272,9 @@ inline void ObjRecRANSAC::getIdPair(const ORRPointSetShape* shape1, const ORRPoi
 }
 
 //================================================================================================================================
-
+#if defined USE_CUDA
+//extern void c_polar_decomposition(const double M[9], double R[9]);
+#endif
 inline void ObjRecRANSAC::estimateSceneNormals()
 {
 	printf("ObjRecRANSAC::%s(): estimating scene normals ... ", __func__); fflush(stdout);
@@ -378,6 +380,7 @@ inline void one_icp_iteration(const double* mp, int numOfPoints, const GeometryP
 	// Compute the optimal rotation and save it in 'transform'
 //	ipp_polar_decomposition(C, transform);
 	cv_polar_decomposition(C, transform);
+    //c_polar_decomposition(C, transform);
 
 	// Compute the center of mass for the scene
 	vec_mult3(s_0, 1.0/(double)match);

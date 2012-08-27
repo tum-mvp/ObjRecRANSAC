@@ -1,6 +1,10 @@
 project(ObjRecRANSACRun)
 cmake_minimum_required(VERSION 2.6)
 
+IF(USE_CUDA)
+  add_definitions(-DUSE_CUDA)
+ENDIF(USE_CUDA)
+
 find_package(VTK)
 
 IF(NOT VTK_FOUND)
@@ -22,19 +26,33 @@ add_subdirectory(src/VtkBasics)
 
 include_directories(
 	${VTK_INCLUDE_DIRS}
+	/usr/local/cuda/include
 	${OpenCV_INCLUDE_DIRS}
 	./src
 )
 
 link_directories(
 	${VTK_LIBRARY_DIRS}
+	/usr/local/cuda/lib
 	${OpenCV_LIB_DIR}
 )
-
-link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS})
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-add_executable(ObjRecRANSACRun ./main.cpp)
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}../FindCuda" ${CMAKE_MODULE_PATH})
+FIND_PACKAGE(CUDA)
+
+link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt)
+
+if(USE_CUDA)
+  CUDA_ADD_EXECUTABLE(ObjRecRANSACRun
+    src/ObjRecRANSAC/AcceptHypothesisAlgo.cu
+    main.cpp
+    )
+else()
+  add_executable(ObjRecRANSACRun main.cpp)
+endif()
+
+

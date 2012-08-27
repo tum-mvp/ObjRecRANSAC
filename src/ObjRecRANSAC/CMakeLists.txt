@@ -21,6 +21,7 @@ FILE(GLOB _ORR_SH_      Shapes/*.cpp)
 include_directories(
 	${VTK_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+	/usr/local/cuda/include
 	..
 )
 
