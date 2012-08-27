@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 
 IF(USE_CUDA)
   add_definitions(-DUSE_CUDA)
+  add_definitions(-DCUDA_DEVICE_ID=1 )
 ENDIF(USE_CUDA)
 
 find_package(VTK)

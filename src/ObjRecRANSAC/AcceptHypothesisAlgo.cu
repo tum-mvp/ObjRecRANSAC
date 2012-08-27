@@ -2,6 +2,10 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#ifndef CUDA_DEVICE_ID
+#define CUDA_DEVICE_ID 0
+#endif
+
 template<typename T> T* CudaUpload(const T* source, int numel)
 {
     T* devicePtr;
@@ -30,6 +34,7 @@ __global__ void cudaAcceptHypothesis(FloatType** model_points, RangeImage image,
 
 void cudaAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* transforms, int num_transforms, int* matches, int gMatchThresh, int gPenaltyThresh)
 {    
+    cudaSetDevice(CUDA_DEVICE_ID);
     RangeImage image_dev = image;
     image_dev.mPixels = CudaUpload(image.mPixels, image.width*image.height);
     image_dev.mGridSetsP = CudaUpload(image.mGridSetsP, image.width*image.height*3);
