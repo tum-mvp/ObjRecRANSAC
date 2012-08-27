@@ -30,7 +30,6 @@ include_directories(
 link_directories(
 	${VTK_LIBRARY_DIRS}
 	/usr/local/cuda/lib
-	src/ObjRecRANSAC
 	${OpenCV_LIB_DIR}
 )
 
@@ -38,6 +37,15 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} cuda_obj rt)
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}../FindCuda" ${CMAKE_MODULE_PATH})
+FIND_PACKAGE(CUDA)
 
-add_executable(ObjRecRANSACRun ./main.cpp)
+link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt)
+
+CUDA_ADD_EXECUTABLE(ObjRecRANSACRun
+  src/ObjRecRANSAC/AcceptHypothesisAlgo.cu
+  main.cpp
+  )
+
+
+
