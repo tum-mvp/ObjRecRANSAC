@@ -22,19 +22,22 @@ add_subdirectory(src/VtkBasics)
 
 include_directories(
 	${VTK_INCLUDE_DIRS}
+	/usr/local/cuda/include
 	${OpenCV_INCLUDE_DIRS}
 	./src
 )
 
 link_directories(
 	${VTK_LIBRARY_DIRS}
+	/usr/local/cuda/lib
+	src/ObjRecRANSAC
 	${OpenCV_LIB_DIR}
 )
-
-link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS})
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
+
+link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} cuda_obj rt)
 
 add_executable(ObjRecRANSACRun ./main.cpp)
