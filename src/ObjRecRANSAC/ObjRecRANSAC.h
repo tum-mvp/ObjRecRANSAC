@@ -30,8 +30,6 @@
 using namespace std;
 using namespace tum;
 
-#define USE_CUDA
-
 class ObjRecRANSAC
 {
 public:
