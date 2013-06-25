@@ -13,7 +13,6 @@
 
 typedef FloatType Real;
 
-
 __device__ __host__ inline void vec_add3(FloatType *v, const FloatType *a)
 {
 	v[0] += a[0];

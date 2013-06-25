@@ -8,7 +8,7 @@ IF(NOT VTK_FOUND)
 If VTK is installed but cmake can not find it, set the VTK_DIR entry to the folder which contains the file VTKConfig.cmake")
 ENDIF(NOT VTK_FOUND)
 
-FILE(GLOB _ORR_CUR_     *.cpp)
+SET(_ORR_CUR_     ModelDatabase.cpp ObjRecRANSAC.cpp)
 FILE(GLOB _ORR_ALGS_    Algorithms/*.cpp)
 FILE(GLOB _ORR_DS_      DataStructures/*.cpp)
 FILE(GLOB _ORR_DS_HTBS_ DataStructures/HashTableBoxStruct/*.cpp)
@@ -17,6 +17,11 @@ FILE(GLOB _ORR_DS_OKD_  DataStructures/ORRKdTree/*.cpp)
 FILE(GLOB _ORR_DS_ORRO_ DataStructures/ORROctree/*.cpp)
 FILE(GLOB _ORR_DS_RI_   DataStructures/RangeImage/*.cpp)
 FILE(GLOB _ORR_SH_      Shapes/*.cpp)
+
+IF(USE_CUDA)
+  LIST(APPEND _ORR_CUR_ AcceptHypothesesAlgo.cpp)
+ENDIF(USE_CUDA)
+
 
 include_directories(
 	${VTK_INCLUDE_DIRS}

@@ -1,7 +1,8 @@
 
-#ifdef USE_CUDA
 
 #include "AcceptHypothesisAlgo.h"
+
+#ifdef USE_CUDA
 
 extern void cudaAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* transforms, int num_transforms, int* matches, int gMatchThresh, int gPenaltyThresh);
 
