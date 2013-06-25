@@ -457,7 +457,7 @@ void *accept(void *data)
 				info->pair_result[pair_id[i]].model_entry = info->model_entries[i];
 				info->pair_result[pair_id[i]].transform = transform;
 			}
-#if defined USE_CUDA
+#ifdef USE_CUDA
             else
             {
                 std::cout << "Wtf this can happen???" << std::endl;
@@ -469,7 +469,7 @@ void *accept(void *data)
 
 	return NULL;
 }
-#if defined USE_CUDA
+#ifdef USE_CUDA
 extern void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage);
 #endif
 
@@ -489,7 +489,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 	printf("ObjRecRANSAC::%s(): checking the hypotheses ... ", __func__); fflush(stdout);
 #endif
     
-#if defined USE_CUDA
+#ifdef USE_CUDA
     mNumOfThreads = 1;
 #endif
 	double* rigid_transform = mRigidTransforms;
@@ -533,7 +533,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 	thread_info[i].pair_ids = pair_ids;
 	thread_info[i].pair_result = new ThreadResult[num_of_pairs];
 	    
-#if defined USE_CUDA
+#ifdef USE_CUDA
     ::acceptHypotheses(&thread_info[i], gMatchThresh, gPenaltyThresh, gImage);
 #else
     // Create the last thread and let it work

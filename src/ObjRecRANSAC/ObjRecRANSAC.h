@@ -272,7 +272,7 @@ inline void ObjRecRANSAC::getIdPair(const ORRPointSetShape* shape1, const ORRPoi
 }
 
 //================================================================================================================================
-#if defined USE_CUDA
+#ifdef USE_CUDA
 //extern void c_polar_decomposition(const double M[9], double R[9]);
 #endif
 inline void ObjRecRANSAC::estimateSceneNormals()

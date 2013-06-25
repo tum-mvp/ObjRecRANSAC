@@ -1,4 +1,6 @@
-#pragma once
+#ifndef __ACCEPT_HYPOTHESIS_ALGO_H
+#define __ACCEPT_HYPOTHESIS_ALGO_H
+
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -10,6 +12,7 @@
 #include "SVD.h"
 
 typedef FloatType Real;
+
 
 __device__ __host__ inline void vec_add3(FloatType *v, const FloatType *a)
 {
@@ -254,3 +257,5 @@ __device__ __host__ inline void acceptHypothesis(int i, FloatType** model_points
         matches[i] = 0;
     }
 }
+
+#endif // ifndef __ACCEPT_HYPOTHESIS_ALGO_H
