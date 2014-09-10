@@ -2,8 +2,9 @@ project(ObjRecRANSACRun)
 cmake_minimum_required(VERSION 2.6)
 
 IF(OBJREC_USE_CUDA)
+  set(OBJREC_CUDA_DEVICE_ID 1 CACHE STRING "Which GPU device to use when running")
   add_definitions(-DUSE_CUDA)
-  add_definitions(-DCUDA_DEVICE_ID=1 )
+  add_definitions(-DCUDA_DEVICE_ID=${OBJREC_CUDA_DEVICE_ID})
 ENDIF(OBJREC_USE_CUDA)
 
 find_package(VTK)
@@ -45,16 +46,15 @@ endif()
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}../FindCuda" ${CMAKE_MODULE_PATH})
 FIND_PACKAGE(CUDA)
 
-link_libraries(ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt)
+link_libraries(ObjRecRANSAC )
 
 if(OBJREC_USE_CUDA)
-  CUDA_ADD_EXECUTABLE(ObjRecRANSACRun
-    src/ObjRecRANSAC/AcceptHypothesisAlgo.cu
-    main.cpp
-    )
+  CUDA_ADD_EXECUTABLE(ObjRecRANSACRun main.cpp)
 else()
   add_executable(ObjRecRANSACRun main.cpp)
 endif()
+
+target_link_libraries(ObjRecRANSACRun ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt)
 
 install(TARGETS ObjRecRANSACRun
   RUNTIME DESTINATION bin

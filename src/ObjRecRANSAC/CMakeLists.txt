@@ -8,6 +8,8 @@ IF(NOT VTK_FOUND)
 If VTK is installed but cmake can not find it, set the VTK_DIR entry to the folder which contains the file VTKConfig.cmake")
 ENDIF(NOT VTK_FOUND)
 
+FIND_PACKAGE(CUDA)
+
 SET(_ORR_CUR_     ModelDatabase.cpp ObjRecRANSAC.cpp)
 FILE(GLOB _ORR_ALGS_    Algorithms/*.cpp)
 FILE(GLOB _ORR_DS_      DataStructures/*.cpp)
@@ -19,7 +21,7 @@ FILE(GLOB _ORR_DS_RI_   DataStructures/RangeImage/*.cpp)
 FILE(GLOB _ORR_SH_      Shapes/*.cpp)
 
 IF(OBJREC_USE_CUDA)
-  LIST(APPEND _ORR_CUR_ AcceptHypothesisAlgo.cpp)
+  LIST(APPEND _ORR_CUR_ )
 ENDIF(OBJREC_USE_CUDA)
 
 
@@ -34,31 +36,65 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
-add_library(ObjRecRANSAC SHARED
-	@_ORR_CUR_@
-	@_ORR_ALGS_@
-	@_ORR_DS_@
-	@_ORR_DS_HTBS_@
-	@_ORR_DS_HTKT_@
-	@_ORR_DS_OKD_@
-	@_ORR_DS_ORRO_@
-	@_ORR_DS_RI_@
-	@_ORR_SH_@
-)
-target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
+IF(OBJREC_USE_CUDA)
+  CUDA_ADD_LIBRARY(ObjRecRANSAC
+    SHARED
+    AcceptHypothesisAlgo.cpp
+    AcceptHypothesisAlgo.cu
+    @_ORR_CUR_@
+    @_ORR_ALGS_@
+    @_ORR_DS_@
+    @_ORR_DS_HTBS_@
+    @_ORR_DS_HTKT_@
+    @_ORR_DS_OKD_@
+    @_ORR_DS_ORRO_@
+    @_ORR_DS_RI_@
+    @_ORR_SH_@
+  )
+  target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
 
-add_library(ObjRecRANSACStatic STATIC
-	@_ORR_CUR_@
-	@_ORR_ALGS_@
-	@_ORR_DS_@
-	@_ORR_DS_HTBS_@
-	@_ORR_DS_HTKT_@
-	@_ORR_DS_OKD_@
-	@_ORR_DS_ORRO_@
-	@_ORR_DS_RI_@
-	@_ORR_SH_@
-)
-set_target_properties(ObjRecRANSACStatic PROPERTIES OUTPUT_NAME ObjRecRANSAC)
+  add_library(ObjRecRANSACStatic
+    STATIC
+    AcceptHypothesisAlgo.cpp
+    AcceptHypothesisAlgo.cu
+    @_ORR_CUR_@
+    @_ORR_ALGS_@
+    @_ORR_DS_@
+    @_ORR_DS_HTBS_@
+    @_ORR_DS_HTKT_@
+    @_ORR_DS_OKD_@
+    @_ORR_DS_ORRO_@
+    @_ORR_DS_RI_@
+    @_ORR_SH_@
+  )
+  set_target_properties(ObjRecRANSACStatic PROPERTIES OUTPUT_NAME ObjRecRANSAC)
+else()
+  add_library(ObjRecRANSAC SHARED
+    @_ORR_CUR_@
+    @_ORR_ALGS_@
+    @_ORR_DS_@
+    @_ORR_DS_HTBS_@
+    @_ORR_DS_HTKT_@
+    @_ORR_DS_OKD_@
+    @_ORR_DS_ORRO_@
+    @_ORR_DS_RI_@
+    @_ORR_SH_@
+  )
+  target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
+
+  add_library(ObjRecRANSACStatic STATIC
+    @_ORR_CUR_@
+    @_ORR_ALGS_@
+    @_ORR_DS_@
+    @_ORR_DS_HTBS_@
+    @_ORR_DS_HTKT_@
+    @_ORR_DS_OKD_@
+    @_ORR_DS_ORRO_@
+    @_ORR_DS_RI_@
+    @_ORR_SH_@
+  )
+  set_target_properties(ObjRecRANSACStatic PROPERTIES OUTPUT_NAME ObjRecRANSAC)
+endif()
 
 install(TARGETS ObjRecRANSAC ObjRecRANSACStatic
   RUNTIME DESTINATION bin
