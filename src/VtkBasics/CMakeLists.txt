@@ -26,3 +26,8 @@ add_library(VtkBasicsStatic STATIC
   @_VTK_@
 )
 set_target_properties(VtkBasicsStatic PROPERTIES OUTPUT_NAME VtkBasics)
+
+install(TARGETS VtkBasics VtkBasicsStatic 
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)

@@ -60,3 +60,8 @@ add_library(BasicToolsStatic STATIC
 )
 set_target_properties(BasicToolsStatic PROPERTIES OUTPUT_NAME BasicTools)
 
+install(TARGETS BasicTools BasicToolsStatic 
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)
+

@@ -18,9 +18,9 @@ FILE(GLOB _ORR_DS_ORRO_ DataStructures/ORROctree/*.cpp)
 FILE(GLOB _ORR_DS_RI_   DataStructures/RangeImage/*.cpp)
 FILE(GLOB _ORR_SH_      Shapes/*.cpp)
 
-IF(USE_CUDA)
-  LIST(APPEND _ORR_CUR_ AcceptHypothesesAlgo.cpp)
-ENDIF(USE_CUDA)
+IF(OBJREC_USE_CUDA)
+  LIST(APPEND _ORR_CUR_ AcceptHypothesisAlgo.cpp)
+ENDIF(OBJREC_USE_CUDA)
 
 
 include_directories(
@@ -60,3 +60,7 @@ add_library(ObjRecRANSACStatic STATIC
 )
 set_target_properties(ObjRecRANSACStatic PROPERTIES OUTPUT_NAME ObjRecRANSAC)
 
+install(TARGETS ObjRecRANSAC ObjRecRANSACStatic
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)

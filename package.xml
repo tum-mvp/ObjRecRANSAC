@@ -1,0 +1,16 @@
+<package>
+  <name>ObjRecRANSAC</name>
+  <version>1.1.0</version>
+  <description>RANSAC variant for 3D object recognition in occluded scenes</description>
+  <license>README</license>
+  <maintainer email="jbo@jhu.edu">Jonathan Bohren</maintainer>
+
+  <author email="papzov@in.tum.de">Chavdar Papazov</author>
+  <author email="burschka@in.tum.de">Darius Burschka</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>
