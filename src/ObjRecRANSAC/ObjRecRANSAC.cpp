@@ -486,7 +486,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
     }
     
 #ifdef OBJ_REC_RANSAC_VERBOSE
-	printf("ObjRecRANSAC::%s(): checking the hypotheses ... ", __func__); fflush(stdout);
+	printf("ObjRecRANSAC::%s(): checking the hypotheses ... \n", __func__); fflush(stdout);
 #endif
     
 #ifdef USE_CUDA

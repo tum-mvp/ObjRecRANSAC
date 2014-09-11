@@ -88,7 +88,10 @@ void cudaAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType*
         // if we would use maxThreadsPerBlock we would violate the max register count per block constraint
 		threadConstraint = deviceProperties.regsPerBlock / kernel_reg_count;
 	}
+
+#ifdef OBJ_REC_RANSAC_VERBOSE_1
     std::cout << "Max registers per block: " << deviceProperties.regsPerBlock << " -> use " << threadConstraint << " threads." << std::endl;
+#endif
 
 	// call kernel
 	int threadsPerBlock = threadConstraint;

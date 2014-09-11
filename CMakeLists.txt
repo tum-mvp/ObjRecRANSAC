@@ -21,6 +21,13 @@ IF(NOT OpenCV_FOUND)
 If OpenCV is installed but cmake can not find it, set the OPENCV_DIR entry to the folder which contains the file OpenCVConfig.cmake")
 ENDIF(NOT OpenCV_FOUND)
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
+endif()
+
+set(CUDA_TOOLKIT_ROOT_DIR $ENV{CUDA_TOOLKIT_ROOT_DIR})
+FIND_PACKAGE(CUDA QUIET REQUIRED)
+
 add_subdirectory(src/BasicToolsL1)
 add_subdirectory(src/BasicTools)
 add_subdirectory(src/ObjRecRANSAC)
@@ -38,15 +45,6 @@ link_directories(
 	/usr/local/cuda/lib
 	${OpenCV_LIB_DIR}
 )
-
-if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
-endif()
-
-SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}../FindCuda" ${CMAKE_MODULE_PATH})
-FIND_PACKAGE(CUDA)
-
-link_libraries(ObjRecRANSAC )
 
 if(OBJREC_USE_CUDA)
   CUDA_ADD_EXECUTABLE(ObjRecRANSACRun main.cpp)
@@ -68,3 +66,8 @@ install(DIRECTORY src/
   PATTERN "*.c" EXCLUDE
   )
 
+install(DIRECTORY data
+  DESTINATION share/ObjRecRANSAC)
+
+install(FILES package.xml
+  DESTINATION share/ObjRecRANSAC)
