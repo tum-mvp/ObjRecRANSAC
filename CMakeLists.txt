@@ -5,6 +5,9 @@ IF(OBJREC_USE_CUDA)
   set(OBJREC_CUDA_DEVICE_ID 1 CACHE STRING "Which GPU device to use when running")
   add_definitions(-DUSE_CUDA)
   add_definitions(-DCUDA_DEVICE_ID=${OBJREC_CUDA_DEVICE_ID})
+
+  set(CUDA_TOOLKIT_ROOT_DIR $ENV{CUDA_TOOLKIT_ROOT_DIR})
+  FIND_PACKAGE(CUDA QUIET REQUIRED)
 ENDIF(OBJREC_USE_CUDA)
 
 find_package(VTK)
@@ -24,9 +27,6 @@ ENDIF(NOT OpenCV_FOUND)
 if(CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
-
-set(CUDA_TOOLKIT_ROOT_DIR $ENV{CUDA_TOOLKIT_ROOT_DIR})
-FIND_PACKAGE(CUDA QUIET REQUIRED)
 
 add_subdirectory(src/BasicToolsL1)
 add_subdirectory(src/BasicTools)
