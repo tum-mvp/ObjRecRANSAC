@@ -96,29 +96,32 @@ void cudaAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType*
 	// call kernel
 	int threadsPerBlock = threadConstraint;
 	int blocksPerGrid = num_transforms/threadConstraint;
-	cudaAcceptHypothesis<<<blocksPerGrid, threadsPerBlock>>>(device_model_points_dev, image_dev, transforms_dev, num_transforms, matches_dev, gMatchThresh, gPenaltyThresh);
-    CheckCudaErrors();
-    
-    // Download transformations from GPU
-    cudaMemcpy(transforms, transforms_dev, sizeof(FloatType)*num_transforms*12, cudaMemcpyDeviceToHost);
-    CheckCudaErrors();
-    
-    // Download match results from GPU
-    cudaMemcpy(matches, matches_dev, sizeof(int)*num_transforms, cudaMemcpyDeviceToHost);
-    CheckCudaErrors();
+  cudaAcceptHypothesis<<<blocksPerGrid, threadsPerBlock>>>(device_model_points_dev, image_dev, transforms_dev, num_transforms, matches_dev, gMatchThresh, gPenaltyThresh);
+  CheckCudaErrors();
 
-    // Free cuda memory
-    cudaFree(image_dev.mPixels);
-    cudaFree(image_dev.mGridSetsP);
-    cudaFree(device_model_points_dev);
-    cudaFree(transforms_dev);
-    cudaFree(matches_dev);
+  // Download transformations from GPU
+  cudaMemcpy(transforms, transforms_dev, sizeof(FloatType)*num_transforms*12, cudaMemcpyDeviceToHost);
+  CheckCudaErrors();
 
-    std::map<const FloatType*, FloatType*>::iterator iter = modelDeviceMap.begin();
-    while(iter!=modelDeviceMap.end())
-    {
-        cudaFree(iter->second);
-        ++iter;
-    }
+  // Download match results from GPU
+  cudaMemcpy(matches, matches_dev, sizeof(int)*num_transforms, cudaMemcpyDeviceToHost);
+  CheckCudaErrors();
+
+  // Free cuda memory
+  cudaFree(image_dev.mPixels);
+  cudaFree(image_dev.mGridSetsP);
+  cudaFree(device_model_points_dev);
+  cudaFree(transforms_dev);
+  cudaFree(matches_dev);
+
+  // Free cpu memory
+  delete[] device_model_points;
+
+  std::map<const FloatType*, FloatType*>::iterator iter = modelDeviceMap.begin();
+  while(iter!=modelDeviceMap.end())
+  {
+    cudaFree(iter->second);
+    ++iter;
+  }
 }
 
