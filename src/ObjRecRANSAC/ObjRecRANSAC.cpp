@@ -173,14 +173,24 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
 		return -1;
 
 #ifdef OBJ_REC_RANSAC_VERBOSE
-  std::cerr<<">>>>>>>>>>>>>"<<std::endl<<">>> doRecognition"<<std::endl;
+  std::cerr
+    <<">>>>>>>>>>>>>>>>>>>>>" <<std::endl
+    <<">>> doRecognition >>>"<<std::endl;
   printParameters(stderr);
 #endif
 
+  // Computation profiling
+  std::vector<double> tictocs;
+  std::vector<std::string> tictoc_names;
+
 	Stopwatch overallStopwatch(false);
+	Stopwatch intraStopwatch(false);
+
 	overallStopwatch.start();
 
 	// Do some initial cleanup and setup
+  tictoc_names.push_back("initialization"); intraStopwatch.start();
+
 	mInputScene = scene;
 	this->init_rec(scene);
 	mOccupiedPixelsByShapes.clear();
@@ -199,11 +209,21 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
 	OctreeNode** leaves = new OctreeNode*[numOfIterations];
 	RandomGenerator randgen;
 
+	list<AcceptedHypothesis> accepted_hypotheses;
+	list<ORRPointSetShape*> detectedShapes;
+
+  tictocs.push_back(intraStopwatch.stop());
+
 	// Init the vector with the ids
+  tictoc_names.push_back("set leaves"); intraStopwatch.start();
+
 	vector<int> ids; ids.reserve(fullLeaves.size());
 	for ( i = 0 ; i < (int)fullLeaves.size() ; ++i ) ids.push_back(i);
 
+  tictocs.push_back(intraStopwatch.stop());
+
 	// Sample the leaves at random
+  tictoc_names.push_back("random leaf sampling"); intraStopwatch.start();
 	for ( i = 0 ; i < numOfIterations ; ++i )
 	{
 		// Choose a random position within the array of ids
@@ -213,22 +233,32 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
 		// Delete the selected id
 		ids.erase(ids.begin() + rand_pos);
 	}
+  tictocs.push_back(intraStopwatch.stop());
 
 	// Sample the oriented point pairs
+  tictoc_names.push_back("oriented pair sampling"); intraStopwatch.start();
 	this->sampleOrientedPointPairs(leaves, numOfIterations, mSampledPairs);
+  tictocs.push_back(intraStopwatch.stop());
 	// Generate the object hypotheses
+  tictoc_names.push_back("generate hypotheses"); intraStopwatch.start();
 	this->generateHypotheses(mSampledPairs);
-	list<AcceptedHypothesis> accepted_hypotheses;
+  tictocs.push_back(intraStopwatch.stop());
 	// Accept hypotheses
+  tictoc_names.push_back("accept hypotheses"); intraStopwatch.start();
 	this->acceptHypotheses(accepted_hypotheses);
+  tictocs.push_back(intraStopwatch.stop());
 	// Convert the accepted hypotheses to shapes
+  tictoc_names.push_back("convert to shapes"); intraStopwatch.start();
 	this->hypotheses2Shapes(accepted_hypotheses, mShapes);
+  tictocs.push_back(intraStopwatch.stop());
 
 	// Filter the weak hypotheses
-	list<ORRPointSetShape*> detectedShapes;
+  tictoc_names.push_back("filter weak"); intraStopwatch.start();
 	this->gridBasedFiltering(mShapes, detectedShapes);
+  tictocs.push_back(intraStopwatch.stop());
 
 	// Save the shapes in 'out'
+  tictoc_names.push_back("save shapes"); intraStopwatch.start();
 	for ( list<ORRPointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
 	{
 		PointSetShape* shape = new PointSetShape(*it);
@@ -246,19 +276,37 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
 				shape->getScenePointIds().push_back(*id);
 		}
 	}
+  tictocs.push_back(intraStopwatch.stop());
 
 	// Cleanup
+  tictoc_names.push_back("cleanup"); intraStopwatch.start();
 	delete[] leaves;
 	accepted_hypotheses.clear();
+  tictocs.push_back(intraStopwatch.stop());
 
+  // ICP Refinement
+  tictoc_names.push_back("icp"); intraStopwatch.start();
 	if ( mICPRefinement )
 	{
 		ObjRecICP objrec_icp;
 		objrec_icp.setEpsilon(1.5);
 		objrec_icp.doICP(*this, out);
 	}
+  tictocs.push_back(intraStopwatch.stop());
 
 	mLastOverallRecognitionTimeSec = overallStopwatch.stop();
+
+#ifdef OBJ_REC_RANSAC_PROFILE
+  std::ostringstream profile_oss;
+  profile_oss
+    <<"Profile: "<<mLastOverallRecognitionTimeSec<<" s"<<std::endl;
+  for(int i=0; i<tictocs.size(); i++) {
+    percent = tictocs[i] / mLastOverallRecognitionTimeSec;
+    profile_oss<<"  "<<percent*100.0<<"%%:"<<tictoc_names[i]<<std::endl;
+  }
+
+  std::cerr<<profile_oss.str()<<std::endl;
+#endif
 
   return 0;
 }
@@ -565,7 +613,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 #if USE_CUDA
       threads.add_thread(new boost::thread(acceptCUDA, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage, mCUDADeviceMap[i], boost::ref(cuda_mutex), boost::ref(cuda_barrier)));
 #else
-      std::Cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA processing cannot be used."<<std::endl;
+      std::cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA processing cannot be used."<<std::endl;
 #endif
     }
 
