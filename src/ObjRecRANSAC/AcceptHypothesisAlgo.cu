@@ -138,6 +138,9 @@ void cudaAcceptHypotheses(
   FloatType* transforms_dev = NULL;
   int* matches_dev = NULL;
 
+  int device;
+  cudaDeviceProp deviceProperties;
+
   {
     boost::mutex::scoped_lock cuda_lock(cuda_mutex);
 
@@ -149,8 +152,6 @@ void cudaAcceptHypotheses(
     CheckCudaErrors();
 
     // Get device properties
-    int device;
-    cudaDeviceProp deviceProperties;
     cudaGetDevice(&device);
     cudaGetDeviceProperties(&deviceProperties, device);
 
@@ -192,27 +193,27 @@ void cudaAcceptHypotheses(
     // Create results structure on device
     cudaMalloc(&matches_dev, sizeof(int)*num_transforms);
     CheckCudaErrors();
-
-    // Find out maximum block and thread count
-    int threadConstraint = deviceProperties.maxThreadsPerBlock;
-    if(threadConstraint*kernel_reg_count > deviceProperties.regsPerBlock)
-    {
-      // if we would use maxThreadsPerBlock we would violate the max register count per block constraint
-      threadConstraint = deviceProperties.regsPerBlock / kernel_reg_count;
-    }
-
-    // call kernel
-    int threadsPerBlock = threadConstraint;
-    int blocksPerGrid = num_transforms/threadConstraint;
-
-    cudaAcceptHypothesis<<<blocksPerGrid, threadsPerBlock, 0, cuda_stream>>>(device_model_points_dev, image_dev, transforms_dev, num_transforms, matches_dev, gMatchThresh, gPenaltyThresh);
-
-    // Download transformations from GPU
-    cudaMemcpyAsync(transforms, transforms_dev, sizeof(FloatType)*num_transforms*12, cudaMemcpyDeviceToHost, cuda_stream);
-
-    // Download match results from GPU
-    cudaMemcpyAsync(matches, matches_dev, sizeof(int)*num_transforms, cudaMemcpyDeviceToHost, cuda_stream);
   }
+
+  // Find out maximum block and thread count
+  int threadConstraint = deviceProperties.maxThreadsPerBlock;
+  if(threadConstraint*kernel_reg_count > deviceProperties.regsPerBlock)
+  {
+    // if we would use maxThreadsPerBlock we would violate the max register count per block constraint
+    threadConstraint = deviceProperties.regsPerBlock / kernel_reg_count;
+  }
+
+  // call kernel
+  int threadsPerBlock = threadConstraint;
+  int blocksPerGrid = num_transforms/threadConstraint;
+
+  cudaAcceptHypothesis<<<blocksPerGrid, threadsPerBlock, 0, cuda_stream>>>(device_model_points_dev, image_dev, transforms_dev, num_transforms, matches_dev, gMatchThresh, gPenaltyThresh);
+
+  // Download transformations from GPU
+  cudaMemcpyAsync(transforms, transforms_dev, sizeof(FloatType)*num_transforms*12, cudaMemcpyDeviceToHost, cuda_stream);
+
+  // Download match results from GPU
+  cudaMemcpyAsync(matches, matches_dev, sizeof(int)*num_transforms, cudaMemcpyDeviceToHost, cuda_stream);
 
   // Wait for all cuda threads to have dispatched their processing
   cuda_barrier.wait();

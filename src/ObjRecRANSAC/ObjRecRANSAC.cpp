@@ -583,7 +583,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
   boost::barrier cuda_barrier(numOfThreads);
 
   // Determine relative powers of CUDA devices
-#if USE_CUDA
+#ifdef USE_CUDA
   const int n_cuda_devices = mCUDADeviceMap.size();
 
   std::vector<int> cuda_thread_constraint(n_cuda_devices, 0);
@@ -603,9 +603,13 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 
   for (int i = 0 ; i < numOfThreads; i++ )
   {
-#if USE_CUDA
+#ifdef USE_CUDA
     if(mUseCUDA) {
-      numOfTransforms = int(mNumOfHypotheses * cuda_power[i] / cuda_total_power);
+      double transform_fraction = cuda_power[i] / cuda_total_power;
+      numOfTransforms = int(mNumOfHypotheses * transform_fraction);
+#ifdef OBJ_REC_RANSAC_PROFILE
+      std::cerr<<"Creating thread on CUDA device "<<mCUDADeviceMap[i]<<" to process "<<numOfTransforms<<" transforms ("<<transform_fraction*100.0<<"\%)"<<std::endl;
+#endif
     }
 #endif
     thread_info[i].num_transforms = numOfTransforms;
@@ -619,7 +623,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
     if(!mUseCUDA) {
       threads.add_thread(new boost::thread(accept, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage));
     } else {
-#if USE_CUDA
+#ifdef USE_CUDA
       threads.add_thread(new boost::thread(acceptCUDA, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage, mCUDADeviceMap[i], boost::ref(cuda_mutex), boost::ref(cuda_barrier)));
 #else
       std::cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA processing cannot be used."<<std::endl;
