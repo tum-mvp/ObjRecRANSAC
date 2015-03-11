@@ -16,13 +16,17 @@ void cpuAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* 
 	}
 }
 
-void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage)
+void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage)
 {
+#ifdef OBJ_REC_RANSAC_VERBOSE
+    std::cerr<<"Accepting hypotheses with CUDA device "<<CUDA_DEVICE_ID<<std::endl;
+#endif
+
     int num_transforms = info->num_transforms;
-    
+
     // Convert range image into cuda supported structure
     RangeImage image(gImage);
-    
+
     // Convert model data to floating point type
     std::map<const double*, FloatType*> modelMap;
     FloatType** model_points = new FloatType*[num_transforms];
@@ -30,7 +34,7 @@ void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, co
     {
         const double* source = info->model_points[i];
         FloatType* destination = 0;
-        
+
         // model_points is a list of pointers to model data. Keep a map of already copied models.
         std::map<const double*, FloatType*>::iterator iter = modelMap.find(source);
         if(iter != modelMap.end())
@@ -45,7 +49,7 @@ void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, co
         }
         model_points[i] = destination;
     }
-      
+
     // Convert input transformations to right floating point type
     FloatType* transforms = new FloatType[num_transforms*12];
     for(int i=0; i<num_transforms*12; ++i) transforms[i] = info->transforms[i];
@@ -53,12 +57,14 @@ void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, co
     // create results structure
     int* matches = new int[num_transforms];
 
-#ifdef USE_CUDA
-    cudaAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
-#else
+    int device_ids[2] = {0, 1};
+
+#if CUDA_TEST_CPU
     cpuAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
+#else
+    cudaAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
 #endif
-    
+
     // Convert resulting transformations back to objRANSAC float type
     for (int i = 0 ; i < num_transforms*12 ; ++i ) info->transforms[i] = transforms[i];
 
@@ -73,14 +79,14 @@ void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, co
             info->pair_result[pair_id].transform = &info->transforms[i*12];
         }
     }
-    
-    
+
+
     delete[] (image.mPixels);
     delete[] (image.mGridSetsP);
     delete[] (model_points);
     delete[] (transforms);
     delete[] (matches);
-    
+
     std::map<const double*, FloatType*>::iterator iter = modelMap.begin();
     while(iter!=modelMap.end())
     {

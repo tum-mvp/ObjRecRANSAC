@@ -8,6 +8,10 @@
 //#include <ippcore.h>
 #include <pthread.h>
 
+#include <boost/thread.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/shared_array.hpp>
+
 ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPairsInHashTable)
 : mModelDatabase(pairwidth, voxelsize)
 {
@@ -36,6 +40,8 @@ ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPa
 	mPairIds = NULL;
 	mModelEntryPointers = NULL;
 	mICPRefinement = true;
+
+  mUseCUDA = false;
 
 	// Build an empty hash table
 	mModelDatabase.setRelativeNumberOfPairsToKill(mRelNumOfPairsToKill);
@@ -158,10 +164,15 @@ void ObjRecRANSAC::init_rec(vtkPoints* scene)
 
 //=============================================================================================================================
 
-void ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& out)
+int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& out)
 {
 	if ( scene->GetNumberOfPoints() <= 0 )
-		return;
+		return -1;
+
+#ifdef OBJ_REC_RANSAC_VERBOSE
+  std::cerr<<">>>>>>>>>>>>>"<<std::endl<<">>> doRecognition"<<std::endl;
+  printParameters(stderr);
+#endif
 
 	Stopwatch overallStopwatch(false);
 	overallStopwatch.start();
@@ -245,6 +256,8 @@ void ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, li
 	}
 
 	mLastOverallRecognitionTimeSec = overallStopwatch.stop();
+
+  return 0;
 }
 
 //=============================================================================================================================
@@ -405,13 +418,10 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
 
 //=============================================================================================================================
 
-int gMatchThresh, gPenaltyThresh;
-const ORRRangeImage2 *gImage;
 
-void *accept(void *data)
+void accept(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage)
 {
 	GeometryProcessor geom_processor;
-	ThreadInfo *info = (ThreadInfo*)data;
 	double out[3], m_0[3], s_0[3], C[9], Ncc[9];
 	double *transform = info->transforms;
 	const double *mp, **model_points = info->model_points;
@@ -457,103 +467,94 @@ void *accept(void *data)
 				info->pair_result[pair_id[i]].model_entry = info->model_entries[i];
 				info->pair_result[pair_id[i]].transform = transform;
 			}
-#ifdef USE_CUDA
-            else
-            {
-                std::cout << "Wtf this can happen???" << std::endl;
-            }
-#endif
-
 		}
 	}
-
-	return NULL;
 }
+
 #ifdef USE_CUDA
-extern void acceptHypotheses(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage);
+extern void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage);
 #endif
 
 //=============================================================================================================================
 
 void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses)
 {
-    //[i10 Change] - When there are no Hypotheses, it makes no sense to accept them or not
-    // In the original code this is not a problem since in the 'acce[t' method, it loops 0 times (0 Hypotheses!)
-    // In the CUDA version this IS a problem, since we are trying to create 0 blocks per grid, which yields an error.
-    if (mNumOfHypotheses == 0)
-    {
-        return;
-    }
-    
+  //[i10 Change] - When there are no Hypotheses, it makes no sense to accept them or not
+  // In the original code this is not a problem since in the 'acce[t' method, it loops 0 times (0 Hypotheses!)
+  // In the CUDA version this IS a problem, since we are trying to create 0 blocks per grid, which yields an error.
+  if (mNumOfHypotheses == 0)
+  {
+    return;
+  }
+
 #ifdef OBJ_REC_RANSAC_VERBOSE
 	printf("ObjRecRANSAC::%s(): checking the hypotheses ... \n", __func__); fflush(stdout);
 #endif
-    
-#ifdef USE_CUDA
-    mNumOfThreads = 1;
+
+  // Only use one "thread" if using CUDA
+  const int numOfThreads = (mUseCUDA) ? (1) : (mNumOfThreads);
+
+  double* rigid_transform = mRigidTransforms;
+  const double **model_points = mPointSetPointers;
+  DatabaseModelEntry **model_entries = mModelEntryPointers;
+  const int* pair_ids = mPairIds;
+  int numOfTransforms = mNumOfHypotheses / numOfThreads;
+  int num_of_pairs = (int)mSampledPairs.size();
+
+  // Stuff for the threads
+  std::vector<ThreadInfo> thread_info(numOfThreads);
+  boost::thread_group threads;
+
+  // Initialize some global variables
+  const ORRRangeImage2 *gImage;
+  int gMatchThresh, gPenaltyThresh;
+
+  gImage = &mSceneRangeImage;
+  gMatchThresh = (int)((double)ORR_NUM_OF_OWN_MODEL_POINTS * mVisibility + 0.5);
+  gPenaltyThresh = (int)((double)ORR_NUM_OF_OWN_MODEL_POINTS * mRelativeNumOfIllegalPts + 0.5);
+
+  for (int i = 0 ; i < numOfThreads; i++ )
+  {
+    thread_info[i].num_transforms = numOfTransforms;
+    thread_info[i].transforms = rigid_transform;
+    thread_info[i].model_points = model_points;
+    thread_info[i].model_entries = model_entries;
+    thread_info[i].pair_ids = pair_ids;
+    thread_info[i].pair_result.resize(num_of_pairs);
+
+    // Create the thread and let him do its job
+    if(!mUseCUDA) {
+      threads.add_thread(new boost::thread(accept, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage));
+    } else {
+#if USE_CUDA
+      threads.add_thread(new boost::thread(acceptCUDA, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage));
+#else
+      std::Cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA processing cannot be used."<<std::endl;
 #endif
-	double* rigid_transform = mRigidTransforms;
-	const double **model_points = mPointSetPointers;
-	DatabaseModelEntry **model_entries = mModelEntryPointers;
-	const int* pair_ids = mPairIds;
-	int i, numOfTransforms = mNumOfHypotheses/mNumOfThreads, num_of_pairs = (int)mSampledPairs.size();
-
-	// Stuff for the threads
-	ThreadInfo* thread_info = new ThreadInfo[mNumOfThreads];
-    pthread_t* threads = new pthread_t[mNumOfThreads];
-
-    // Initialize some global variables
-    gImage = &mSceneRangeImage;
-	gMatchThresh = (int)((double)ORR_NUM_OF_OWN_MODEL_POINTS*mVisibility + 0.5);
-	gPenaltyThresh = (int)((double)ORR_NUM_OF_OWN_MODEL_POINTS*mRelativeNumOfIllegalPts + 0.5);
-
-    for ( i = 0 ; i < mNumOfThreads - 1 ; ++i )
-    {
-    	thread_info[i].num_transforms = numOfTransforms;
-    	thread_info[i].transforms = rigid_transform;
-    	thread_info[i].model_points = model_points;
-    	thread_info[i].model_entries = model_entries;
-    	thread_info[i].pair_ids = pair_ids;
-    	thread_info[i].pair_result = new ThreadResult[num_of_pairs];
-    	// Create the thread and let him do its job
-    	pthread_create(&threads[i], NULL, accept, (void*)&thread_info[i]);
-
-    	// Increment some pointers
-    	rigid_transform += 12*numOfTransforms;
-    	model_points += numOfTransforms;
-    	model_entries += numOfTransforms;
-    	pair_ids += numOfTransforms;
     }
 
-    // For the last thread
-	thread_info[i].num_transforms = numOfTransforms + mNumOfHypotheses%mNumOfThreads;
-	thread_info[i].transforms = rigid_transform;
-	thread_info[i].model_points = model_points;
-	thread_info[i].model_entries = model_entries;
-	thread_info[i].pair_ids = pair_ids;
-	thread_info[i].pair_result = new ThreadResult[num_of_pairs];
-	    
-#ifdef USE_CUDA
-    ::acceptHypotheses(&thread_info[i], gMatchThresh, gPenaltyThresh, gImage);
-#else
-    // Create the last thread and let it work
-    pthread_create(&threads[i], NULL, accept, (void*)&thread_info[i]);
-	// Wait for all threads
-	for ( i = 0 ; i < mNumOfThreads ; ++i )
-		pthread_join(threads[i], NULL);
-#endif
-    
+    if(i < numOfThreads + 1) {
+      // Increment some pointers
+      rigid_transform += 12*numOfTransforms;
+      model_points += numOfTransforms;
+      model_entries += numOfTransforms;
+      pair_ids += numOfTransforms;
+    }
+  }
+
+  // Wait for all threads
+  threads.join_all();
+
 	// Some variables needed for the hypothesis acceptance
 	AcceptedHypothesis accepted;
-	int k;
 
 	// For all pairs
-	for ( i = 0 ; i < num_of_pairs ; ++i )
+	for (int i = 0 ; i < num_of_pairs ; ++i )
 	{
 		accepted.match = 0;
 
 		// Get the best match for the i-th pair from all threads
-		for ( k = 0 ; k < mNumOfThreads ; ++k )
+		for (int k = 0 ; k < numOfThreads ; ++k )
 		{
 			// Check the result of this thread for the i-th pair
 			if ( thread_info[k].pair_result[i].match > accepted.match )
@@ -563,17 +564,14 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 				accepted.rigid_transform = thread_info[k].pair_result[i].transform;
 			}
 		}
-		if ( accepted.match > 0 )
+		if ( accepted.match > 0 ) {
 			acceptedHypotheses.push_back(accepted);
+    }
 	}
 
 #ifdef OBJ_REC_RANSAC_VERBOSE
 	printf("%i accepted.\n", (int)acceptedHypotheses.size()); fflush(stdout);
 #endif
-
-	// Cleanup
-	delete[] thread_info;
-	delete[] threads;
 }
 
 //=============================================================================================================================

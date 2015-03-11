@@ -7,8 +7,15 @@ IF(OBJREC_USE_CUDA)
   add_definitions(-DCUDA_DEVICE_ID=${OBJREC_CUDA_DEVICE_ID})
 
   set(CUDA_TOOLKIT_ROOT_DIR $ENV{CUDA_TOOLKIT_ROOT_DIR})
-  FIND_PACKAGE(CUDA QUIET REQUIRED)
+  FIND_PACKAGE(CUDA REQUIRED)
+
+  add_definitions(-DOBJ_REC_RANSAC_VERBOSE)
+  #add_definitions(-DOBJ_REC_RANSAC_VERBOSE_1)
+  #add_definitions(-DOBJ_REC_RANSAC_VERBOSE_2)
 ENDIF(OBJREC_USE_CUDA)
+
+find_package(Boost COMPONENTS thread REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS)
 
 find_package(VTK)
 

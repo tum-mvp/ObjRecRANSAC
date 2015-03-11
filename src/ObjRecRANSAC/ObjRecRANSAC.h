@@ -49,7 +49,7 @@ public:
 
 	bool addModel(vtkPolyData* model, UserData* userData);
 	/** Do NOT forget to delete the shapes saved in 'detectedShapes' after using them! */
-	void doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& detectedShapes);
+	int doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& detectedShapes);
 
 	/** Usually you do not need to call this method. It will be called within 'this->doRecognition()'. */
 	bool buildSceneOctree(vtkPoints* scene, double voxelsize);
@@ -63,6 +63,15 @@ public:
 	void setNormalEstimationRadius(int value){ mNormalEstimationNeighRadius = value;}
 	void setIntersectionFraction(double value){ mIntersectionFraction = value;}
 	void setNumberOfThreads(int numOfThreads){ mNumOfThreads = numOfThreads;}
+	void setUseCUDA(bool useCUDA){ 
+#ifdef USE_CUDA
+    mUseCUDA = useCUDA;
+#else
+    if(useCUDA) {
+      std::cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA mode cannot be enabled."<<std::endl;
+    }
+#endif
+  }
 
 	vtkPoints* getInputScene(){ return mInputScene;}
 	ORROctree* getSceneOctree(){ return mSceneOctree;}
@@ -143,6 +152,9 @@ protected:
 	double mRelativeObjSize, mPairWidth, mAbsZDistThresh;
 	double mRelNumOfPairsToKill, mIntersectionFraction;
 	bool mICPRefinement;
+
+  // CUDA swtich
+  bool mUseCUDA;
 };
 
 //=== inline methods ==============================================================================================

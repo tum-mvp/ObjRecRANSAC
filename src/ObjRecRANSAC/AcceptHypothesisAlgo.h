@@ -72,7 +72,7 @@ public:
     int width, height;
 	FloatType mInvPixelSize;
     FloatType mBounds[4];
-    
+
     FloatType* mGridSetsP;
     FloatType_2* mPixels;
 
@@ -82,11 +82,11 @@ public:
         width = image->width();
         height = image->height();
         mInvPixelSize = 1.0 / image->getPixelSize();
-        
+
         for (int i=0; i<4; ++i) {
             mBounds[i] = image->getBounds()[i];
         }
-        
+
         // convert pixel data to linear memory
         mPixels = new FloatType_2[width*height];
         for (int x=0; x<width; ++x) {
@@ -113,26 +113,26 @@ public:
                     if(src) {
                         mGridSetsP[idx+0] = src[0];
                         mGridSetsP[idx+1] = src[1];
-                        mGridSetsP[idx+2] = src[2];     
-                    }    
+                        mGridSetsP[idx+2] = src[2];
+                    }
                 }
             }
         }
     }
-    
+
     __device__ __host__ const FloatType_2* getSafePixel(FloatType u, FloatType v, int& x, int& y) const
     {
         if ( u < mBounds[0] || u >= mBounds[1] || v < mBounds[2] || v >= mBounds[3] )
             return NULL;
-        
+
         x = (int)((u-mBounds[0])*mInvPixelSize);
         y = (int)((v-mBounds[2])*mInvPixelSize);
-        
+
         return &mPixels[x*height + y];
     }
-    
+
     __device__ __host__ const FloatType* getGridSetP(int x, int y)const
-    { 
+    {
         int idx = (x*height*3 + y*3);
         return &mGridSetsP[idx];
     }
@@ -151,38 +151,38 @@ __device__ __host__ inline void one_icp_iteration(const FloatType* mp, int numOf
     FloatType s_0[3];
     FloatType Ncc[9];
     FloatType C[9];
-    
+
 	int k, x, y, match = 0;
 	const FloatType_2* pixel;
 	const FloatType *sp;
 	FloatType out[3];
-    
+
 	// Some initializations
 	m_0[0] = m_0[1] = m_0[2] = 0.0;
 	s_0[0] = s_0[1] = s_0[2] = 0.0;
 	C[0] = C[1] = C[2] = C[3] = C[4] = C[5] = C[6] = C[7] = C[8] = 0.0;
-    
+
 	/* The ICP loop */
 	for ( k = 0 ; k < numOfPoints ; ++k, mp += 3 )
 	{
 		// Transform the model point with the current rigid transform
 		mat_mult3_by_rigid(transform, mp, out);
-        
+
 		// Get the pixel the point 'out' lies in
 		pixel = image.getSafePixel(out[0], out[1], x, y);
 		// Check if we have a valid pixel
 		if ( !pixel || (pixel->x == -1.0 && pixel->y == -1.0))
 			continue;
-        
+
 		if ( out[2] < pixel->x ) // The transformed model point overshadows a pixel
 			continue;
 		else if ( out[2] <= pixel->y ) // The point is OK.
 		{
 			++match;
-            
+
 			// Get the scene point
 			sp = image.getGridSetP(x, y);
-            
+
 			// Contribute to the center of mass
 			vec_add3(m_0, mp); // We use 'out' only to establish the correspondence
 			vec_add3(s_0, sp);
@@ -190,11 +190,11 @@ __device__ __host__ inline void one_icp_iteration(const FloatType* mp, int numOf
 			mat_add_tensor_product_to_mat9(sp, mp, C);
 		}
 	}
-    
+
 	// We need at least three corresponding point pairs
 	if ( match < 3 )
 		return;
-    
+
 	// Compute the center of mass for the model
 	vec_mult3(m_0, (FloatType)(1.0/(FloatType)match));
 	// Compute 'Ncc'
@@ -205,10 +205,10 @@ __device__ __host__ inline void one_icp_iteration(const FloatType* mp, int numOf
 	//ipp_polar_decomposition(C, transform);
 	c_polar_decomposition(C, transform);
     //c_polar_decomposition(C, transform);
-    
+
 	// Compute the center of mass for the scene
 	vec_mult3(s_0, (FloatType)(1.0/(FloatType)match));
-    
+
 	// Compute the optimal translation
 	transform[9]  = s_0[0] - (transform[0]*m_0[0] + transform[1]*m_0[1] + transform[2]*m_0[2]);
 	transform[10] = s_0[1] - (transform[3]*m_0[0] + transform[4]*m_0[1] + transform[5]*m_0[2]);
@@ -220,32 +220,32 @@ __device__ __host__ inline void acceptHypothesis(int i, FloatType** model_points
     FloatType* transform = &transforms[i*12];
     one_icp_iteration(model_points[i], ORR_NUM_OF_OWN_MODEL_POINTS,
                       image, transform);
-    
+
     // Some initializations for the second loop (the match/penalty loop)
     FloatType* mp = model_points[i];
     int match = 0, penalty = 0;
     FloatType out[3];
     int x, y;
     const FloatType_2* pixel;
-    
+
     // The match/penalty loop
     for (int k = 0 ; k < ORR_NUM_OF_OWN_MODEL_POINTS ; ++k, mp += 3 )
     {
         // Transform the model point with the current rigid transform
         mat_mult3_by_rigid(transform, mp, out);
-        
+
         // Get the pixel the point 'out' lies in
         pixel = image.getSafePixel(out[0], out[1], x, y);
         // Check if we have a valid pixel
         if ( pixel == NULL )
             continue;
-        
+
         if ( out[2] < pixel->x ) // The transformed model point overshadows a pixel -> penalize it.
             ++penalty;
         else if ( out[2] <= pixel->y ) // The point is OK.
             ++match;
     }
-    
+
     // Check if we should accept this hypothesis
     if ( match >= gMatchThresh && penalty <= gPenaltyThresh )
     {

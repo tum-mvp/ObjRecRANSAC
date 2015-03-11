@@ -37,6 +37,16 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 IF(OBJREC_USE_CUDA)
+  set(CUDA_NVCC_FLAGS "-Xptxas -v")
+
+  cuda_compile_ptx(
+    cuda_ptx_files
+    AcceptHypothesisAlgo.cu
+    )
+  add_custom_target(ptx ALL
+    DEPENDS ${cuda_ptx_files} AcceptHypothesisAlgo.cu
+    SOURCES AcceptHypothesisAlgo.cu)
+
   CUDA_ADD_LIBRARY(ObjRecRANSAC
     SHARED
     AcceptHypothesisAlgo.cpp
@@ -51,7 +61,7 @@ IF(OBJREC_USE_CUDA)
     @_ORR_DS_RI_@
     @_ORR_SH_@
   )
-  target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
+  target_link_libraries(ObjRecRANSAC ${Boost_LIBRARIES} ${OpenCV_LIBS} BasicTools BasicToolsL1)
 
   add_library(ObjRecRANSACStatic
     STATIC
@@ -80,7 +90,7 @@ else()
     @_ORR_DS_RI_@
     @_ORR_SH_@
   )
-  target_link_libraries(ObjRecRANSAC ${OpenCV_LIBS} BasicTools BasicToolsL1)
+  target_link_libraries(ObjRecRANSAC ${Boost_LIBRARIES} ${OpenCV_LIBS} BasicTools BasicToolsL1)
 
   add_library(ObjRecRANSACStatic STATIC
     @_ORR_CUR_@
