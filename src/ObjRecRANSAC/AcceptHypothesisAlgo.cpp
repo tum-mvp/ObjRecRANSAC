@@ -2,9 +2,21 @@
 
 #include "AcceptHypothesisAlgo.h"
 
+#include <boost/thread/barrier.hpp>
+
 #ifdef USE_CUDA
 
-extern void cudaAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* transforms, int num_transforms, int* matches, int gMatchThresh, int gPenaltyThresh);
+extern void cudaAcceptHypotheses(
+    FloatType** model_points,
+    RangeImage image,
+    FloatType* transforms,
+    int num_transforms,
+    int* matches,
+    const int gMatchThresh,
+    const int gPenaltyThresh,
+    const int device_id,
+    boost::mutex &cuda_mutex,
+    boost::barrier &cuda_barrier);
 
 #endif
 
@@ -16,10 +28,17 @@ void cpuAcceptHypotheses(FloatType** model_points, RangeImage image, FloatType* 
 	}
 }
 
-void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage)
+void acceptCUDA(
+    ThreadInfo *info,
+    int gMatchThresh,
+    int gPenaltyThresh,
+    const ORRRangeImage2 *gImage,
+    int device_id,
+    boost::mutex &cuda_mutex,
+    boost::barrier &cuda_barrier)
 {
 #ifdef OBJ_REC_RANSAC_VERBOSE
-    std::cerr<<"Accepting hypotheses with CUDA device "<<CUDA_DEVICE_ID<<std::endl;
+    std::cerr<<"Accepting hypotheses with CUDA device "<<device_id<<std::endl;
 #endif
 
     int num_transforms = info->num_transforms;
@@ -57,12 +76,15 @@ void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const OR
     // create results structure
     int* matches = new int[num_transforms];
 
-    int device_ids[2] = {0, 1};
-
-#if CUDA_TEST_CPU
-    cpuAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
+#ifdef CUDA_TEST_CPU
+    cpuAcceptHypotheses(
+        model_points, image, transforms, num_transforms, matches,
+        gMatchThresh, gPenaltyThresh,
+        );
 #else
-    cudaAcceptHypotheses(model_points, image, transforms, num_transforms, matches, gMatchThresh, gPenaltyThresh);
+    cudaAcceptHypotheses(
+        model_points, image, transforms, num_transforms, matches,
+        gMatchThresh, gPenaltyThresh, device_id, cuda_mutex, cuda_barrier);
 #endif
 
     // Convert resulting transformations back to objRANSAC float type

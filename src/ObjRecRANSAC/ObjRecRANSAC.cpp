@@ -8,6 +8,8 @@
 //#include <ippcore.h>
 #include <pthread.h>
 
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/barrier.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/shared_array.hpp>
@@ -42,6 +44,7 @@ ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPa
 	mICPRefinement = true;
 
   mUseCUDA = false;
+  mCUDADeviceMap.push_back(0);
 
 	// Build an empty hash table
 	mModelDatabase.setRelativeNumberOfPairsToKill(mRelNumOfPairsToKill);
@@ -472,13 +475,18 @@ void accept(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRan
 }
 
 #ifdef USE_CUDA
-extern void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage);
+
+extern void getCUDAThreadConstraint(const int device_id, int &threadConstraint, int &numOfCores, double &power);
+extern void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRangeImage2 *gImage,
+                       int device_id, boost::mutex &cuda_mutex, boost::barrier &cuda_barrier);
 #endif
 
 //=============================================================================================================================
 
 void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses)
 {
+  boost::recursive_mutex::scoped_lock computing_lock(mComputingMutex);
+
   //[i10 Change] - When there are no Hypotheses, it makes no sense to accept them or not
   // In the original code this is not a problem since in the 'acce[t' method, it loops 0 times (0 Hypotheses!)
   // In the CUDA version this IS a problem, since we are trying to create 0 blocks per grid, which yields an error.
@@ -492,7 +500,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 #endif
 
   // Only use one "thread" if using CUDA
-  const int numOfThreads = (mUseCUDA) ? (1) : (mNumOfThreads);
+  const int numOfThreads = (mUseCUDA) ? (mCUDADeviceMap.size()) : (mNumOfThreads);
 
   double* rigid_transform = mRigidTransforms;
   const double **model_points = mPointSetPointers;
@@ -513,8 +521,36 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
   gMatchThresh = (int)((double)ORR_NUM_OF_OWN_MODEL_POINTS * mVisibility + 0.5);
   gPenaltyThresh = (int)((double)ORR_NUM_OF_OWN_MODEL_POINTS * mRelativeNumOfIllegalPts + 0.5);
 
+  // Threading synchronization
+  boost::mutex cuda_mutex;
+  boost::barrier cuda_barrier(numOfThreads);
+
+  // Determine relative powers of CUDA devices
+#if USE_CUDA
+  const int n_cuda_devices = mCUDADeviceMap.size();
+
+  std::vector<int> cuda_thread_constraint(n_cuda_devices, 0);
+  std::vector<int> cuda_cores(n_cuda_devices, 0);
+  std::vector<double> cuda_power(n_cuda_devices, 0);
+
+  double cuda_total_power = 0;
+
+  // Determine the arithmetic "power" of each card
+  if(mUseCUDA) {
+    for(int i=0; i< n_cuda_devices; i++) {
+      getCUDAThreadConstraint(mCUDADeviceMap[i], cuda_thread_constraint[i], cuda_cores[i], cuda_power[i]);
+      cuda_total_power += cuda_power[i];
+    }
+  }
+#endif
+
   for (int i = 0 ; i < numOfThreads; i++ )
   {
+#if USE_CUDA
+    if(mUseCUDA) {
+      numOfTransforms = int(mNumOfHypotheses * cuda_power[i] / cuda_total_power);
+    }
+#endif
     thread_info[i].num_transforms = numOfTransforms;
     thread_info[i].transforms = rigid_transform;
     thread_info[i].model_points = model_points;
@@ -527,7 +563,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
       threads.add_thread(new boost::thread(accept, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage));
     } else {
 #if USE_CUDA
-      threads.add_thread(new boost::thread(acceptCUDA, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage));
+      threads.add_thread(new boost::thread(acceptCUDA, &thread_info[i], gMatchThresh, gPenaltyThresh, gImage, mCUDADeviceMap[i], boost::ref(cuda_mutex), boost::ref(cuda_barrier)));
 #else
       std::Cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA processing cannot be used."<<std::endl;
 #endif

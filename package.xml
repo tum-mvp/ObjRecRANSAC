@@ -1,7 +1,11 @@
 <package>
   <name>ObjRecRANSAC</name>
   <version>1.1.0</version>
-  <description>RANSAC variant for 3D object recognition in occluded scenes</description>
+  <description>
+    RANSAC variant for 3D object recognition in occluded scenes
+
+    This software contains source code provided by NVIDIA Corporation.
+  </description>
   <license>README</license>
   <maintainer email="jbo@jhu.edu">Jonathan Bohren</maintainer>
 

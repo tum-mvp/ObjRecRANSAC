@@ -54,6 +54,8 @@ The software was tested on 64bit Linux (Fedora 12 and Ubuntu 11.10).
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+  This software contains source code provided by NVIDIA Corporation.
+
 ##################################################################
 
 3. How to build and run.

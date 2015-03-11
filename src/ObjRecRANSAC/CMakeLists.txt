@@ -39,13 +39,13 @@ endif()
 IF(OBJREC_USE_CUDA)
   set(CUDA_NVCC_FLAGS "-Xptxas -v")
 
-  cuda_compile_ptx(
-    cuda_ptx_files
-    AcceptHypothesisAlgo.cu
-    )
-  add_custom_target(ptx ALL
-    DEPENDS ${cuda_ptx_files} AcceptHypothesisAlgo.cu
-    SOURCES AcceptHypothesisAlgo.cu)
+  #cuda_compile_ptx(
+    #cuda_ptx_files
+    #AcceptHypothesisAlgo.cu
+    #)
+  #add_custom_target(ptx ALL
+    #DEPENDS ${cuda_ptx_files} AcceptHypothesisAlgo.cu
+    #SOURCES AcceptHypothesisAlgo.cu)
 
   CUDA_ADD_LIBRARY(ObjRecRANSAC
     SHARED

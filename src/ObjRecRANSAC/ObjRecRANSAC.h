@@ -27,6 +27,8 @@
 #include <cmath>
 #include <list>
 
+#include <boost/thread/recursive_mutex.hpp>
+
 using namespace std;
 using namespace tum;
 
@@ -71,6 +73,12 @@ public:
       std::cerr<<"ObjRecRANSAC::"<<std::string(__func__)<<"(): ObjRecRANSAC wasn't compiled with -DUSE_CUDA, so CUDA mode cannot be enabled."<<std::endl;
     }
 #endif
+  }
+
+  void setCUDADeviceMap(std::vector<int> &deviceMap){
+    boost::recursive_mutex::scoped_lock computing_lock(mComputingMutex);
+
+    mCUDADeviceMap.assign(deviceMap.begin(), deviceMap.end());
   }
 
 	vtkPoints* getInputScene(){ return mInputScene;}
@@ -155,6 +163,9 @@ protected:
 
   // CUDA swtich
   bool mUseCUDA;
+  std::vector<int> mCUDADeviceMap;
+
+  boost::recursive_mutex mComputingMutex;
 };
 
 //=== inline methods ==============================================================================================
