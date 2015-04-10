@@ -39,7 +39,7 @@ using namespace std;
 
 void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPolyDataReader*>& readers);
 void loadModelsAachen(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPolyDataReader*>& readers);
-void visualize(list<PointSetShape*>& detectedShapes, vtkPoints* scene, vtkPoints* background);
+void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoints* scene, vtkPoints* background);
 
 //=========================================================================================================================
 
@@ -98,7 +98,7 @@ int main()
 	// This list will contain the model instances which are detected in the scene. After the object detection has been
 	// performed, use the 'getUserData()' method for each 'PointSetShape' in the list in order to know which is the
 	// object you are currently considering.
-	list<PointSetShape*> detectedShapes;
+	list<boost::shared_ptr<PointSetShape> > detectedShapes;
 
 	// Now the (optional) scene pre-processing takes place followed by the object recognition.
 
@@ -155,9 +155,6 @@ int main()
 	visualize(detectedShapes, scene, background);
 
 	// Cleanup
-	// Destroy the detected shapes
-	for ( list<PointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
-		delete *it;
 	// Destroy the 'UserData' objects
 	for ( list<UserData*>::iterator it = userDataList.begin() ; it != userDataList.end() ; ++it ) delete *it;
 	// Destroy the readers
@@ -261,7 +258,7 @@ void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPol
 
 //=========================================================================================================================
 
-void visualize(list<PointSetShape*>& detectedShapes, vtkPoints* scene, vtkPoints* background)
+void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoints* scene, vtkPoints* background)
 {
 	printf("Visualizing ...\n");
 
@@ -275,9 +272,9 @@ void visualize(list<PointSetShape*>& detectedShapes, vtkPoints* scene, vtkPoints
 	list<VtkPolyData*> transformedModelList;
 
 	// Visualize the detected objects (important to look inside this loop)
-	for ( list<PointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
+	for ( list<boost::shared_ptr<PointSetShape> >::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
 	{
-		PointSetShape* shape = (*it);
+		boost::shared_ptr<PointSetShape>  shape = (*it);
 		// Which object do we have (and what confidence in the recognition result)
 		if ( shape->getUserData() )
 			printf("\t%s, confidence: %lf\n", shape->getUserData()->getLabel(), shape->getConfidence());

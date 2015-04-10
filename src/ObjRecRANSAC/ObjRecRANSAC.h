@@ -51,7 +51,7 @@ public:
 
 	bool addModel(vtkPolyData* model, UserData* userData);
 	/** Do NOT forget to delete the shapes saved in 'detectedShapes' after using them! */
-	int doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& detectedShapes);
+	int doRecognition(vtkPoints* scene, double successProbability, list<boost::shared_ptr<PointSetShape> >& detectedShapes);
 
 	/** Usually you do not need to call this method. It will be called within 'this->doRecognition()'. */
 	bool buildSceneOctree(vtkPoints* scene, double voxelsize);
@@ -109,7 +109,7 @@ protected:
 			const double* scenePoint2, const double* sceneNormal2, HashTableCell** cells,
 			int numOfCells, int pair_id);
 	void acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses);
-	void hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vector<ORRPointSetShape*>& shapes);
+	void hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vector<boost::shared_ptr<ORRPointSetShape> >& shapes);
 
 	void clear_rec();
 	void init_rec(vtkPoints* scene);
@@ -118,15 +118,15 @@ protected:
 			HashTableCell** cells, int numOfCells);
 	inline void collectCenteredPoints(list<OctreeNode*>& nodes, double** out);
 	inline double* estimateNodeNormal(double** ptsToUse, OctreeNode* node, ORROctreeNodeData* node_data);
-	void gridBasedFiltering(vector<ORRPointSetShape*>& shapes, list<ORRPointSetShape*>& out);
-	inline int computeNumberOfIterations(double successProbability, int numOfScenePoints);
+	void gridBasedFiltering(vector<boost::shared_ptr<ORRPointSetShape> >& shapes, list<boost::shared_ptr<ORRPointSetShape> >& out);
+	inline int computeNumberOfIterations(double successProbability, int numOfScenePoints) const;
 	inline void estimateSceneNormals();
 
 	/** Computes the intersection between %shape1 and %shape2. Returns true if the intersection is significant,
 	  * meaning that the cardinality of the intersection set is a large fraction of the id sets of the shapes. */
-	inline bool significantIntersection(ORRPointSetShape* shape1, ORRPointSetShape* shape2);
+	inline bool significantIntersection(boost::shared_ptr<ORRPointSetShape>  shape1, boost::shared_ptr<ORRPointSetShape>  shape2);
 
-	inline void getIdPair(const ORRPointSetShape* shape1, const ORRPointSetShape* shape2, std::pair<int,int>& id_pair);
+	inline void getIdPair(const boost::shared_ptr<ORRPointSetShape>  shape1, const boost::shared_ptr<ORRPointSetShape>  shape2, std::pair<int,int>& id_pair);
 
 	inline void cvPolarDecomp(const double M[9], double R[9]);
 
@@ -141,17 +141,17 @@ protected:
 
 	ORRRangeImage2 mSceneRangeImage;
 	list<list<int>* > mOccupiedPixelsByShapes;
-	vector<ORRPointSetShape*> mShapes;
+	vector<boost::shared_ptr<ORRPointSetShape> > mShapes;
 
 	list<OrientedPair> mSampledPairs;
 
 	bool mUseAbsoluteObjSize;
 
-	list<Hypothesis*> mHypotheses;
-	double *mRigidTransforms;
-	const double **mPointSetPointers;
-	int *mPairIds;
-	DatabaseModelEntry **mModelEntryPointers;
+	list<boost::shared_ptr<Hypothesis> > mHypotheses;
+  std::vector<double> mRigidTransforms;
+  std::vector<const double*> mPointSetPointers;
+  std::vector<int> mPairIds;
+  std::vector<DatabaseModelEntry *> mModelEntryPointers;
 
 	// Parameters
 	int mNormalEstimationNeighRadius, mNumOfPointsPerLayer, mEstOfModelPointsInTheScene;
@@ -166,11 +166,16 @@ protected:
   std::vector<int> mCUDADeviceMap;
 
   boost::recursive_mutex mComputingMutex;
+
+  // Working structures for optimization
+  std::vector<int> mIDs;
+  std::vector<OctreeNode*> mLeaves;
+  RandomGenerator mRandGen;
 };
 
 //=== inline methods ==============================================================================================
 
-int ObjRecRANSAC::computeNumberOfIterations(double successProbability, int numOfScenePoints)
+int ObjRecRANSAC::computeNumberOfIterations(double successProbability, int numOfScenePoints) const
 {
 	// 'p_obj' is the probability that given that the first sample point belongs to an object,
 	// the second sample point will belong to the same object
@@ -252,7 +257,7 @@ inline double* ObjRecRANSAC::estimateNodeNormal(double** ptsToUse, OctreeNode* n
 
 //================================================================================================================================
 
-inline bool ObjRecRANSAC::significantIntersection(ORRPointSetShape* shape1, ORRPointSetShape* shape2)
+inline bool ObjRecRANSAC::significantIntersection(boost::shared_ptr<ORRPointSetShape>  shape1, boost::shared_ptr<ORRPointSetShape>  shape2)
 {
 	// Some variables for the intersection between both shapes
 	vector<int> intersection(shape1->getLinearPixelIds().size() + shape2->getLinearPixelIds().size());
@@ -280,7 +285,7 @@ inline bool ObjRecRANSAC::significantIntersection(ORRPointSetShape* shape1, ORRP
 
 //================================================================================================================================
 
-inline void ObjRecRANSAC::getIdPair(const ORRPointSetShape* shape1, const ORRPointSetShape* shape2, std::pair<int,int>& id_pair)
+inline void ObjRecRANSAC::getIdPair(const boost::shared_ptr<ORRPointSetShape> shape1, const boost::shared_ptr<ORRPointSetShape> shape2, std::pair<int,int>& id_pair)
 {
 	if ( shape1->getShapeId() <= shape2->getShapeId() )
 	{

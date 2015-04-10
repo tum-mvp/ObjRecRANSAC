@@ -12,7 +12,13 @@
 #include <boost/thread/barrier.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/shared_array.hpp>
+
+template <class T>
+static T* vec2a(std::vector<T> &vec) {
+  return &vec[0];
+}
 
 ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPairsInHashTable)
 : mModelDatabase(pairwidth, voxelsize)
@@ -37,10 +43,6 @@ ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPa
 	mPairWidth = pairwidth;
 	mRelNumOfPairsInTheHashTable = 1.0;
 
-	mRigidTransforms = NULL;
-	mPointSetPointers = NULL;
-	mPairIds = NULL;
-	mModelEntryPointers = NULL;
 	mICPRefinement = true;
 
   mUseCUDA = false;
@@ -67,27 +69,53 @@ void ObjRecRANSAC::clear()
 
 void ObjRecRANSAC::clear_rec()
 {
+  std::vector<double> tictocs;
+  std::vector<std::string> tictoc_names;
+  Stopwatch overallStopwatch(false);
+  Stopwatch intraStopwatch(false);
+  overallStopwatch.start();
+
+  tictoc_names.push_back("memory free"); intraStopwatch.start();
+
 	if ( mSceneOctree )
 	{
 		delete mSceneOctree;
 		mSceneOctree = NULL;
 	}
 
-	if ( mRigidTransforms ){ delete[] mRigidTransforms; mRigidTransforms = NULL;}
-	if ( mPointSetPointers ){ delete[] mPointSetPointers; mPointSetPointers = NULL;}
-	if ( mPairIds ){ delete[] mPairIds; mPairIds = NULL;}
-	if ( mModelEntryPointers ){ delete[] mModelEntryPointers; mModelEntryPointers = NULL;}
-
-	for ( unsigned int i = 0 ; i < mShapes.size() ; ++i )
-		delete mShapes[i];
 	mShapes.clear();
-
-	for ( list<Hypothesis*>::iterator it = mHypotheses.begin() ; it != mHypotheses.end() ; ++it )
-		delete *it;
 	mHypotheses.clear();
+	mSampledPairs.clear();
+
+  tictocs.push_back(intraStopwatch.stop());
+
+  tictoc_names.push_back("reset counters"); intraStopwatch.start();
 
 	mModelDatabase.resetInstanceCounters();
-	mSampledPairs.clear();
+
+  tictocs.push_back(intraStopwatch.stop());
+
+#ifdef OBJ_REC_RANSAC_PROFILE
+  double overall_time = overallStopwatch.stop();
+  std::ostringstream profile_oss;
+  profile_oss
+    <<"Profile: "
+    <<std::setprecision(3)
+    <<overall_time<<" s"<<std::endl;
+  for(int i=0; i<tictocs.size(); i++) {
+    double percent = 100.0 * tictocs[i] / overall_time;
+    profile_oss<<"  "
+      <<std::setprecision(3)
+      <<std::setw(7)
+      <<std::setfill(' ')
+      <<std::right
+      <<std::fixed
+      <<percent
+      <<" \%:"<<tictoc_names[i]<<std::endl;
+  }
+
+  std::cerr<<profile_oss.str()<<std::endl;
+#endif
 }
 
 //=============================================================================================================================
@@ -155,22 +183,58 @@ bool ObjRecRANSAC::buildSceneOctree(vtkPoints* scene, double voxelsize)
 
 void ObjRecRANSAC::init_rec(vtkPoints* scene)
 {
+  std::vector<double> tictocs;
+  std::vector<std::string> tictoc_names;
+  Stopwatch overallStopwatch(false);
+  Stopwatch intraStopwatch(false);
+  overallStopwatch.start();
+
+  tictoc_names.push_back("clear rec"); intraStopwatch.start();
+
 	// Clear some stuff
 	this->clear_rec();
+
+  tictocs.push_back(intraStopwatch.stop());
+  tictoc_names.push_back("build octree"); intraStopwatch.start();
 
 	// Initialize
 	this->buildSceneOctree(scene, mVoxelSize);
 	mSceneRangeImage.buildFromOctree(mSceneOctree, mAbsZDistThresh, mAbsZDistThresh);
 
+
 	mNumOfHypotheses = 0;
+
+  tictocs.push_back(intraStopwatch.stop());
+
+#ifdef OBJ_REC_RANSAC_PROFILE
+  double overall_time = overallStopwatch.stop();
+  std::ostringstream profile_oss;
+  profile_oss
+    <<"Profile: "
+    <<std::setprecision(3)
+    <<overall_time<<" s"<<std::endl;
+  for(int i=0; i<tictocs.size(); i++) {
+    double percent = 100.0 * tictocs[i] / overall_time;
+    profile_oss<<"  "
+      <<std::setprecision(3)
+      <<std::setw(7)
+      <<std::setfill(' ')
+      <<std::right
+      <<std::fixed
+      <<percent
+      <<" \%:"<<tictoc_names[i]<<std::endl;
+  }
+
+  std::cerr<<profile_oss.str()<<std::endl;
+#endif
 }
 
 //=============================================================================================================================
 
-int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& out)
+int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, list<boost::shared_ptr<PointSetShape> >& out)
 {
-	if ( scene->GetNumberOfPoints() <= 0 )
-		return -1;
+  if ( scene->GetNumberOfPoints() <= 0 )
+    return -1;
 
 #ifdef OBJ_REC_RANSAC_VERBOSE
   std::cerr
@@ -183,118 +247,123 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
   std::vector<double> tictocs;
   std::vector<std::string> tictoc_names;
 
-	Stopwatch overallStopwatch(false);
-	Stopwatch intraStopwatch(false);
+  Stopwatch overallStopwatch(false);
+  Stopwatch intraStopwatch(false);
 
-	overallStopwatch.start();
+  overallStopwatch.start();
 
-	// Do some initial cleanup and setup
+  // Do some initial cleanup and setup
   tictoc_names.push_back("initialization"); intraStopwatch.start();
 
-	mInputScene = scene;
-	this->init_rec(scene);
-	mOccupiedPixelsByShapes.clear();
+  list<AcceptedHypothesis> accepted_hypotheses;
+  list<boost::shared_ptr<ORRPointSetShape> > detectedShapes;
 
-	int i, numOfIterations = this->computeNumberOfIterations(successProbability, (int)scene->GetNumberOfPoints());
-	vector<OctreeNode*>& fullLeaves = mSceneOctree->getFullLeafs();
-
-	if ( (int)fullLeaves.size() < numOfIterations )
-		numOfIterations = (int)fullLeaves.size();
-
-#ifdef OBJ_REC_RANSAC_VERBOSE
-	printf("ObjRecRANSAC::%s(): recognizing objects [%i iteration(s), %i thread(s)]\n",
-			__func__, numOfIterations, mNumOfThreads); fflush(stdout);
-#endif
-
-	OctreeNode** leaves = new OctreeNode*[numOfIterations];
-	RandomGenerator randgen;
-
-	list<AcceptedHypothesis> accepted_hypotheses;
-	list<ORRPointSetShape*> detectedShapes;
+  mInputScene = scene;
+  this->init_rec(scene);
+  mOccupiedPixelsByShapes.clear();
 
   tictocs.push_back(intraStopwatch.stop());
 
-	// Init the vector with the ids
+  // Compute the number of iterations based on the desired success probability
+  tictoc_names.push_back("determine iterations"); intraStopwatch.start();
+
+  int i, numOfIterations = this->computeNumberOfIterations(successProbability, (int)scene->GetNumberOfPoints());
+
+  vector<OctreeNode*>& fullLeaves = mSceneOctree->getFullLeafs();
+
+  if ( (int)fullLeaves.size() < numOfIterations )
+    numOfIterations = (int)fullLeaves.size();
+
+  mLeaves.resize(numOfIterations);
+
+  tictocs.push_back(intraStopwatch.stop());
+
+  // Init the vector with the ids
   tictoc_names.push_back("set leaves"); intraStopwatch.start();
 
-	vector<int> ids; ids.reserve(fullLeaves.size());
-	for ( i = 0 ; i < (int)fullLeaves.size() ; ++i ) ids.push_back(i);
+  std::vector<int> &ids = mIDs;
+  ids.resize(fullLeaves.size());
+  for ( i = 0 ; i < (int)fullLeaves.size() ; ++i ) ids[i] = i;
 
   tictocs.push_back(intraStopwatch.stop());
 
-	// Sample the leaves at random
+  // Sample the leaves at random
   tictoc_names.push_back("random leaf sampling"); intraStopwatch.start();
-	for ( i = 0 ; i < numOfIterations ; ++i )
-	{
-		// Choose a random position within the array of ids
-		int rand_pos = randgen.getRandomInteger(0, ids.size() - 1);
-		// Get the id at that random position
-		leaves[i] = fullLeaves[ids[rand_pos]];
-		// Delete the selected id
-		ids.erase(ids.begin() + rand_pos);
-	}
+  for ( i = 0 ; i < numOfIterations ; ++i )
+  {
+    // Choose a random position within the array of ids
+    int rand_pos = mRandGen.getRandomInteger(0, ids.size() - 1);
+    // Get the id at that random position
+    mLeaves[i] = fullLeaves[ids[rand_pos]];
+    // Delete the selected id
+    ids.erase(ids.begin() + rand_pos);
+  }
   tictocs.push_back(intraStopwatch.stop());
 
-	// Sample the oriented point pairs
+#ifdef OBJ_REC_RANSAC_VERBOSE
+  printf("ObjRecRANSAC::%s(): recognizing objects [%i iteration(s), %i thread(s)]\n",
+         __func__, numOfIterations, mNumOfThreads); fflush(stdout);
+#endif
+
+  // Sample the oriented point pairs
   tictoc_names.push_back("oriented pair sampling"); intraStopwatch.start();
-	this->sampleOrientedPointPairs(leaves, numOfIterations, mSampledPairs);
+  this->sampleOrientedPointPairs(&mLeaves[0], numOfIterations, mSampledPairs);
   tictocs.push_back(intraStopwatch.stop());
-	// Generate the object hypotheses
+  // Generate the object hypotheses
   tictoc_names.push_back("generate hypotheses"); intraStopwatch.start();
-	this->generateHypotheses(mSampledPairs);
+  this->generateHypotheses(mSampledPairs);
   tictocs.push_back(intraStopwatch.stop());
-	// Accept hypotheses
+  // Accept hypotheses
   tictoc_names.push_back("accept hypotheses"); intraStopwatch.start();
-	this->acceptHypotheses(accepted_hypotheses);
+  this->acceptHypotheses(accepted_hypotheses);
   tictocs.push_back(intraStopwatch.stop());
-	// Convert the accepted hypotheses to shapes
+  // Convert the accepted hypotheses to shapes
   tictoc_names.push_back("convert to shapes"); intraStopwatch.start();
-	this->hypotheses2Shapes(accepted_hypotheses, mShapes);
+  this->hypotheses2Shapes(accepted_hypotheses, mShapes);
   tictocs.push_back(intraStopwatch.stop());
 
-	// Filter the weak hypotheses
+  // Filter the weak hypotheses
   tictoc_names.push_back("filter weak"); intraStopwatch.start();
-	this->gridBasedFiltering(mShapes, detectedShapes);
+  this->gridBasedFiltering(mShapes, detectedShapes);
   tictocs.push_back(intraStopwatch.stop());
 
-	// Save the shapes in 'out'
+  // Save the shapes in 'out'
   tictoc_names.push_back("save shapes"); intraStopwatch.start();
-	for ( list<ORRPointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
-	{
-		PointSetShape* shape = new PointSetShape(*it);
-		  // Save the new created shape
-		  out.push_back(shape);
+  for ( list<boost::shared_ptr<ORRPointSetShape> >::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
+  {
+    boost::shared_ptr<PointSetShape> shape = boost::make_shared<PointSetShape>((*it).get());
+    // Save the new created shape
+    out.push_back(shape);
 
-		// Get the nodes of the current shape
-		list<OctreeNode*>& nodes = (*it)->getOctreeSceneNodes();
-		// For all nodes of the current shape
-		for ( list<OctreeNode*>::iterator node = nodes.begin() ; node != nodes.end() ; ++node )
-		{
-			ORROctreeNodeData* data = (ORROctreeNodeData*)(*node)->getData();
-			// Get the ids from the current node
-			for ( list<int>::iterator id = data->getPointIds().begin() ; id != data->getPointIds().end() ; ++id )
-				shape->getScenePointIds().push_back(*id);
-		}
-	}
+    // Get the nodes of the current shape
+    list<OctreeNode*>& nodes = (*it)->getOctreeSceneNodes();
+    // For all nodes of the current shape
+    for ( list<OctreeNode*>::iterator node = nodes.begin() ; node != nodes.end() ; ++node )
+    {
+      ORROctreeNodeData* data = (ORROctreeNodeData*)(*node)->getData();
+      // Get the ids from the current node
+      for ( list<int>::iterator id = data->getPointIds().begin() ; id != data->getPointIds().end() ; ++id )
+        shape->getScenePointIds().push_back(*id);
+    }
+  }
   tictocs.push_back(intraStopwatch.stop());
 
-	// Cleanup
+  // Cleanup
   tictoc_names.push_back("cleanup"); intraStopwatch.start();
-	delete[] leaves;
-	accepted_hypotheses.clear();
+  accepted_hypotheses.clear();
   tictocs.push_back(intraStopwatch.stop());
 
   // ICP Refinement
   tictoc_names.push_back("icp"); intraStopwatch.start();
-	if ( mICPRefinement )
-	{
-		ObjRecICP objrec_icp;
-		objrec_icp.setEpsilon(1.5);
-		objrec_icp.doICP(*this, out);
-	}
+  if ( mICPRefinement )
+  {
+    ObjRecICP objrec_icp;
+    objrec_icp.setEpsilon(1.5);
+    objrec_icp.doICP(*this, out);
+  }
   tictocs.push_back(intraStopwatch.stop());
 
-	mLastOverallRecognitionTimeSec = overallStopwatch.stop();
+  mLastOverallRecognitionTimeSec = overallStopwatch.stop();
 
 #ifdef OBJ_REC_RANSAC_PROFILE
   std::ostringstream profile_oss;
@@ -412,13 +481,13 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
 	printf("\r%.1lf%% done [%i hypotheses]\n", ((double)i)*factor, mNumOfHypotheses); fflush(stdout);
 #endif
 
-	mRigidTransforms = new double[12*mNumOfHypotheses];
-	mPointSetPointers = new const double*[mNumOfHypotheses];
-	mPairIds = new int[mNumOfHypotheses];
-	mModelEntryPointers = new DatabaseModelEntry*[mNumOfHypotheses];
+	mRigidTransforms.resize(12*mNumOfHypotheses);
+	mPointSetPointers.resize(mNumOfHypotheses);
+	mPairIds.resize(mNumOfHypotheses);
+	mModelEntryPointers.resize(mNumOfHypotheses);
 
-	double *rigid_transform = mRigidTransforms;
-	list<Hypothesis*>::iterator hypo;
+	double *rigid_transform = vec2a(mRigidTransforms);
+	list<boost::shared_ptr<Hypothesis> >::iterator hypo;
 
 	for ( i = 0, hypo = mHypotheses.begin() ; hypo != mHypotheses.end() ; ++i, ++hypo, rigid_transform += 12 )
 	{
@@ -470,7 +539,7 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
 
 				++mNumOfHypotheses;
 				// Save the current object hypothesis
-				mHypotheses.push_back(new Hypothesis(rigid_transform, pair_id, dbModelEntry));
+				mHypotheses.push_back(boost::make_shared<Hypothesis>(rigid_transform, pair_id, dbModelEntry));
 			}
 		}
 	}
@@ -559,10 +628,10 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
   // Only use one "thread" if using CUDA
   const int numOfThreads = (mUseCUDA) ? (mCUDADeviceMap.size()) : (mNumOfThreads);
 
-  double* rigid_transform = mRigidTransforms;
-  const double **model_points = mPointSetPointers;
-  DatabaseModelEntry **model_entries = mModelEntryPointers;
-  const int* pair_ids = mPairIds;
+  double* rigid_transform = vec2a(mRigidTransforms);
+  const double **model_points = vec2a(mPointSetPointers);
+  DatabaseModelEntry **model_entries = vec2a(mModelEntryPointers);
+  const int* pair_ids = vec2a(mPairIds);
   int numOfTransforms = mNumOfHypotheses / numOfThreads;
   int num_of_pairs = (int)mSampledPairs.size();
 
@@ -673,14 +742,14 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 
 //=============================================================================================================================
 
-void ObjRecRANSAC::hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vector<ORRPointSetShape*>& shapes)
+void ObjRecRANSAC::hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vector<boost::shared_ptr<ORRPointSetShape> >& shapes)
 {
 	GeometryProcessor geom_processor;
 	const double *mp;
 	double p[3], *rigid_transform;
 	int i, x, y, numOfPoints, support, shape_id, hypo_id = 1;
 	const double_2* pixel;
-	ORRPointSetShape *shape;
+  boost::shared_ptr<ORRPointSetShape> shape;
 	DatabaseModelEntry* model_entry;
 
 	// For the shapes
@@ -699,7 +768,7 @@ void ObjRecRANSAC::hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vecto
 		numOfPoints = (*hypo).model_entry->getOwnPointSet()->getNumberOfPoints();
 		rigid_transform = (*hypo).rigid_transform;
 		model_entry = (*hypo).model_entry;
-		shape = NULL;
+		shape.reset();
 		support = 0;
 		// Get the current shape id
 		shape_id = (int)shapes.size();
@@ -719,10 +788,10 @@ void ObjRecRANSAC::hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vecto
 			{
 				++support;
 
-				if ( shape == NULL )
+				if ( !shape )
 				{
 					// Create a new shape
-					shape = new ORRPointSetShape(model_entry->getUserData(), model_entry->getOwnModel(),
+					shape = boost::make_shared<ORRPointSetShape>(model_entry->getUserData(), model_entry->getOwnModel(),
 							rigid_transform, model_entry->getHighResModel(), model_entry->getInstanceCounter());
 					  shape->setShapeId(shape_id);
 					  shape->setSceneStateOn();
@@ -778,10 +847,10 @@ bool cmp_int_pairs(std::pair<int,int> p1, std::pair<int,int> p2)
 
 //=============================================================================================================================
 
-void ObjRecRANSAC::gridBasedFiltering(vector<ORRPointSetShape*>& shapes, list<ORRPointSetShape*>& out)
+void ObjRecRANSAC::gridBasedFiltering(vector<boost::shared_ptr<ORRPointSetShape> >& shapes, list<boost::shared_ptr<ORRPointSetShape> > &out)
 {
 	list<list<int>* >::iterator pixel;
-	list<ORRPointSetShape*> pixel_shapes;
+	list<boost::shared_ptr<ORRPointSetShape> > pixel_shapes;
 	list<int>::iterator id;
 	set<std::pair<int,int>, bool(*)(std::pair<int,int>, std::pair<int,int>)> both_on(cmp_int_pairs);
 	std::pair<int,int> on_pair;
@@ -800,12 +869,12 @@ void ObjRecRANSAC::gridBasedFiltering(vector<ORRPointSetShape*>& shapes, list<OR
 				pixel_shapes.push_back(shapes[*id]);
 
 		// All against all
-		for ( list<ORRPointSetShape*>::iterator it1 = pixel_shapes.begin() ; it1 != pixel_shapes.end() ; ++it1 )
+		for ( list<boost::shared_ptr<ORRPointSetShape> >::iterator it1 = pixel_shapes.begin() ; it1 != pixel_shapes.end() ; ++it1 )
 		{
 			if ( (*it1)->isSceneStateOff() )
 				continue;
 
-			list<ORRPointSetShape*>::iterator it2 = it1;
+			list<boost::shared_ptr<ORRPointSetShape> >::iterator it2 = it1;
 			for ( ++it2 ; it2 != pixel_shapes.end() && (*it1)->isSceneStateOn() ; ++it2 )
 			{
 				// Both 'it1' and 'it2' are ON -> check if they are not in the list of already checked shapes
@@ -842,7 +911,7 @@ void ObjRecRANSAC::gridBasedFiltering(vector<ORRPointSetShape*>& shapes, list<OR
 	}
 
 	// The shapes that are still ON are the ones we want
-	for ( vector<ORRPointSetShape*>::iterator shape = shapes.begin() ; shape != shapes.end() ; ++shape )
+	for ( vector<boost::shared_ptr<ORRPointSetShape> >::iterator shape = shapes.begin() ; shape != shapes.end() ; ++shape )
 		if ( (*shape)->isSceneStateOn() )
 			out.push_back(*shape);
 }
