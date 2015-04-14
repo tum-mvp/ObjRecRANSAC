@@ -44,6 +44,7 @@ ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPa
 	mRelNumOfPairsInTheHashTable = 1.0;
 
 	mICPRefinement = true;
+  mICPEpsilon = 0.0015;
 
   mUseCUDA = false;
   mCUDADeviceMap.push_back(0);
@@ -358,7 +359,7 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
   if ( mICPRefinement )
   {
     ObjRecICP objrec_icp;
-    objrec_icp.setEpsilon(1.5);
+    objrec_icp.setEpsilon(mICPEpsilon);
     objrec_icp.doICP(*this, out);
   }
   tictocs.push_back(intraStopwatch.stop());

@@ -59,6 +59,7 @@ public:
 
 	void setVisibility(double value){ mVisibility = value;}
 	void setRelativeObjectSize(double value){ mRelativeObjSize = value;}
+	void setICPRefinement(bool enable, double epsilon){ mICPRefinement = enable; mICPEpsilon = epsilon; }
 	void setRelativeNumberOfIllegalPoints(double value){ mRelativeNumOfIllegalPts = value;}
 	/** As fraction of the voxel size. */
 	void setZDistanceThreshAsVoxelSizeFraction(double value){ mAbsZDistThresh = value*mVoxelSize;}
@@ -160,6 +161,7 @@ protected:
 	double mRelativeObjSize, mPairWidth, mAbsZDistThresh;
 	double mRelNumOfPairsToKill, mIntersectionFraction;
 	bool mICPRefinement;
+	double mICPEpsilon;
 
   // CUDA swtich
   bool mUseCUDA;
