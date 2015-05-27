@@ -82,7 +82,7 @@ public:
     mCUDADeviceMap.assign(deviceMap.begin(), deviceMap.end());
   }
   void setDebugNormalRadius(double radius) { mDebugNormalRadius = radius; }
-  void setDebugNormals(int enable) { mDebugNormals = enable; }
+  void setDebugNormals(int num_clouds) { mDebugNormals = num_clouds; }
 
 	vtkPoints* getInputScene(){ return mInputScene;}
 	ORROctree* getSceneOctree(){ return mSceneOctree;}
