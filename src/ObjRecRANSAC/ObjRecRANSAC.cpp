@@ -345,6 +345,36 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
     pcl::io::savePCDFile(
         str(boost::format("orr_opoints.%1%.pcd") % mDebugNormals), 
         orr_oriented_points_pc2);
+
+    // Dense ORR sampling
+    points->clear();
+    orr_normals->clear();
+    orr_oriented_points->clear();
+    int tmp = 2*mNormalEstimationNeighRadius + 1;
+    int maxNumOfNeighbours = tmp*tmp*tmp;
+    double** pca_pts = mat_alloc(3, maxNumOfNeighbours);
+    ORROctreeNodeData *data = NULL;
+
+    for(std::vector<OctreeNode*>::const_iterator leaf=fullLeaves.begin();
+        leaf != fullLeaves.end();
+        ++leaf)
+    {
+      data = (ORROctreeNodeData*)((*leaf)->getData());
+      const double *p = data->getPoint();
+      const double *n = this->estimateNodeNormal(pca_pts, *leaf, data);
+
+      if(n) {
+        points->push_back(pcl::PointXYZ(p[0], p[1], p[2]));
+        orr_normals->push_back(pcl::Normal(n[0], n[1], n[2]));
+      }
+    }
+    mat_dealloc(pca_pts, 3);
+
+    pcl::concatenateFields (*points, *orr_normals, *orr_oriented_points);
+    pcl::toPCLPointCloud2(*orr_oriented_points, orr_oriented_points_pc2);
+    pcl::io::savePCDFile(
+        str(boost::format("orr_opoints_dense.%1%.pcd") % mDebugNormals), 
+        orr_oriented_points_pc2);
     
     // Compute normals via pcl
     pcl::PointCloud<pcl::Normal>::Ptr pcl_normals(new pcl::PointCloud<pcl::Normal>);
