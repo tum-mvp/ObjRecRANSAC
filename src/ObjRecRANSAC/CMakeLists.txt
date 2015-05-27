@@ -10,6 +10,11 @@ ENDIF(NOT VTK_FOUND)
 
 FIND_PACKAGE(CUDA)
 
+find_package(PCL REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 SET(_ORR_CUR_     ModelDatabase.cpp ObjRecRANSAC.cpp)
 FILE(GLOB _ORR_ALGS_    Algorithms/*.cpp)
 FILE(GLOB _ORR_DS_      DataStructures/*.cpp)
@@ -61,7 +66,7 @@ IF(OBJREC_USE_CUDA)
     @_ORR_DS_RI_@
     @_ORR_SH_@
   )
-  target_link_libraries(ObjRecRANSAC ${Boost_LIBRARIES} ${OpenCV_LIBS} BasicTools BasicToolsL1)
+target_link_libraries(ObjRecRANSAC ${Boost_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES} BasicTools BasicToolsL1)
 
   add_library(ObjRecRANSACStatic
     STATIC

@@ -81,6 +81,8 @@ public:
 
     mCUDADeviceMap.assign(deviceMap.begin(), deviceMap.end());
   }
+  void setDebugNormalRadius(double radius) { mDebugNormalRadius = radius; }
+  void setDebugNormals(int enable) { mDebugNormals = enable; }
 
 	vtkPoints* getInputScene(){ return mInputScene;}
 	ORROctree* getSceneOctree(){ return mSceneOctree;}
@@ -166,6 +168,9 @@ protected:
   // CUDA swtich
   bool mUseCUDA;
   std::vector<int> mCUDADeviceMap;
+
+  int mDebugNormals;
+  double mDebugNormalRadius;
 
   boost::recursive_mutex mComputingMutex;
 
