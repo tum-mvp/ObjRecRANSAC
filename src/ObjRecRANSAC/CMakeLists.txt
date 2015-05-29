@@ -95,7 +95,7 @@ else()
     @_ORR_DS_RI_@
     @_ORR_SH_@
   )
-  target_link_libraries(ObjRecRANSAC ${Boost_LIBRARIES} ${OpenCV_LIBS} BasicTools BasicToolsL1)
+  target_link_libraries(ObjRecRANSAC ${Boost_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES} BasicTools BasicToolsL1)
 
   add_library(ObjRecRANSACStatic STATIC
     @_ORR_CUR_@
