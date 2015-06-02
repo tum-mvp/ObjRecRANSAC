@@ -603,14 +603,14 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
   mModelEntryPointers.resize(mNumOfHypotheses);
 
   double *rigid_transform = vec2a(mRigidTransforms);
-  list<boost::shared_ptr<Hypothesis> >::iterator hypo;
+  list<Hypothesis>::iterator hypo;
 
   for ( i = 0, hypo = mHypotheses.begin() ; hypo != mHypotheses.end() ; ++i, ++hypo, rigid_transform += 12 )
   {
-    vec_copy12<double>((*hypo)->rigid_transform, rigid_transform);
-    mPointSetPointers[i] = (*hypo)->model_entry->getOwnPointSet()->getPoints_const();
-    mPairIds[i] = (*hypo)->pair_id;
-    mModelEntryPointers[i] = (*hypo)->model_entry;
+    vec_copy12<double>(hypo->rigid_transform, rigid_transform);
+    mPointSetPointers[i] = hypo->model_entry->getOwnPointSet()->getPoints_const();
+    mPairIds[i] = hypo->pair_id;
+    mModelEntryPointers[i] = hypo->model_entry;
   }
 }
 
@@ -626,6 +626,30 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
   DatabaseModelEntry* dbModelEntry;
   map<DatabaseModelEntry*, HashTableCellEntry*>::const_iterator cell_entry;
   int i, model_id;
+  int numOfKeys = 0;
+  list<Hypothesis>::iterator hypo;
+
+//  for(int j = 0; j < numOfCells; ++j) {
+//    numOfKeys += cells[i]->getNumberOfKeys(dbModelEntry?);
+//  }
+
+  int hypocount = 0;
+
+  for ( i = 0 ; i < numOfCells ; ++i )
+  {
+    const map<DatabaseModelEntry*, HashTableCellEntry*>& cellEntries = cells[i]->getCellEntries();
+    for ( cell_entry = cellEntries.begin() ; cell_entry != cellEntries.end() ; ++cell_entry )
+    {
+     const list<Key*>& keys = (*cell_entry).second->getKeys();
+     for ( list<Key*>::const_iterator key = keys.begin() ; key != keys.end() ; ++key )
+      {
+        hypocount++;
+      }
+    }
+  }
+ 
+  mHypotheses.resize(hypocount, Hypothesis(0, 0, 0));
+  hypo = mHypotheses.begin();
 
   for ( i = 0 ; i < numOfCells ; ++i )
   {
@@ -653,12 +677,18 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
         mOptTransform.getRigidTransform(modelPoint1, modelNormal1, modelPoint2, modelNormal2,
                                         scenePoint1, sceneNormal1, scenePoint2, sceneNormal2, rigid_transform);
 
+        hypo->rigid_transform = rigid_transform;
+        hypo->pair_id = pair_id;
+        hypo->model_entry = dbModelEntry;
+        ++hypo;
         ++mNumOfHypotheses;
         // Save the current object hypothesis
-        mHypotheses.push_back(boost::make_shared<Hypothesis>(rigid_transform, pair_id, dbModelEntry));
+        //mHypotheses.push_back(Hypothesis(rigid_transform, pair_id, dbModelEntry));
       }
     }
   }
+  //std::cout<<"Hypotheses: " << mNumOfHypotheses;
+  //mHypotheses.resize(mNumOfHypotheses, Hypothesis(0,0,0));
 }
 
 //=============================================================================================================================
@@ -860,6 +890,7 @@ void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses
 
 void ObjRecRANSAC::hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vector<boost::shared_ptr<ORRPointSetShape> >& shapes)
 {
+
   GeometryProcessor geom_processor;
   const double *mp;
   double p[3], *rigid_transform;

@@ -150,7 +150,7 @@ protected:
 
   bool mUseAbsoluteObjSize;
 
-  list<boost::shared_ptr<Hypothesis> > mHypotheses;
+  list<Hypothesis> mHypotheses;
   std::vector<double> mRigidTransforms;
   std::vector<const double*> mPointSetPointers;
   std::vector<int> mPairIds;
