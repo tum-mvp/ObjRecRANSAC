@@ -597,16 +597,17 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
   printf("\r%.1lf%% done [%i hypotheses]\n", ((double)i)*factor, mNumOfHypotheses); fflush(stdout);
 #endif
 
-  mRigidTransforms.resize(12*mNumOfHypotheses);
-  mPointSetPointers.resize(mNumOfHypotheses);
-  mPairIds.resize(mNumOfHypotheses);
-  mModelEntryPointers.resize(mNumOfHypotheses);
+  mRigidTransforms.resize(12*(mHypotheses.size()));
+  mPointSetPointers.resize(mHypotheses.size());
+  mPairIds.resize(mHypotheses.size());
+  mModelEntryPointers.resize(mHypotheses.size());
 
   double *rigid_transform = vec2a(mRigidTransforms);
   list<Hypothesis>::iterator hypo;
 
-  for ( i = 0, hypo = mHypotheses.begin() ; hypo != mHypotheses.end() ; ++i, ++hypo, rigid_transform += 12 )
+  for ( i = 0, hypo = mHypotheses.begin(); hypo != mHypotheses.end(); ++i, ++hypo, rigid_transform += 12 )
   {
+    std::cerr << "transform: " << rigid_transform << " hypo transform: " << hypo->rigid_transform << " loop counter: " << i << std::endl;
     vec_copy12<double>(hypo->rigid_transform, rigid_transform);
     mPointSetPointers[i] = hypo->model_entry->getOwnPointSet()->getPoints_const();
     mPairIds[i] = hypo->pair_id;
@@ -626,36 +627,28 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
   DatabaseModelEntry* dbModelEntry;
   map<DatabaseModelEntry*, HashTableCellEntry*>::const_iterator cell_entry;
   int i, model_id;
-  int numOfKeys = 0;
   list<Hypothesis>::iterator hypo;
 
-//  for(int j = 0; j < numOfCells; ++j) {
-//    numOfKeys += cells[i]->getNumberOfKeys(dbModelEntry?);
-//  }
-
-  int hypocount = 0;
-
+ //Calculate the number of hypothesis for this pair and allocate that much memory
+  int temp = mNumOfHypotheses;
   for ( i = 0 ; i < numOfCells ; ++i )
   {
-    const map<DatabaseModelEntry*, HashTableCellEntry*>& cellEntries = cells[i]->getCellEntries();
-    for ( cell_entry = cellEntries.begin() ; cell_entry != cellEntries.end() ; ++cell_entry )
+    for ( cell_entry = cells[i]->getCellEntries().begin() ; cell_entry !=  cells[i]->getCellEntries().end() ; ++cell_entry )
     {
-     const list<Key*>& keys = (*cell_entry).second->getKeys();
-     for ( list<Key*>::const_iterator key = keys.begin() ; key != keys.end() ; ++key )
-      {
-        hypocount++;
-      }
+     mNumOfHypotheses += (*cell_entry).second->getKeys().size();
     }
   }
- 
-  mHypotheses.resize(hypocount, Hypothesis(0, 0, 0));
+  mHypotheses.resize(mNumOfHypotheses, Hypothesis(0, 0, 0));
   hypo = mHypotheses.begin();
+
+  //std::cerr << "Number of Hypotheses: " << mNumOfHypotheses << std::endl;
+  std::cerr << "Collective Hypotheses: " << mNumOfHypotheses << " Added this time: " << (mNumOfHypotheses - temp) << std::endl;
 
   for ( i = 0 ; i < numOfCells ; ++i )
   {
     const map<DatabaseModelEntry*, HashTableCellEntry*>& cellEntries = cells[i]->getCellEntries();
     // Check for all models in the current cell
-    for ( cell_entry = cellEntries.begin() ; cell_entry != cellEntries.end() ; ++cell_entry )
+    for ( cell_entry = cellEntries.begin() ; cell_entry != cellEntries.end() ; cell_entry++ )
     {
       dbModelEntry = (*cell_entry).first;
       model = dbModelEntry->getOwnModel();
@@ -664,7 +657,7 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
       const list<Key*>& keys = (*cell_entry).second->getKeys();
 
       // Check for all pairs which belong to the current model
-      for ( list<Key*>::const_iterator key = keys.begin() ; key != keys.end() ; ++key )
+      for ( list<Key*>::const_iterator key = keys.begin() ; key != keys.end() ; key++ )
       {
         // Get the points and the normals from the model
         model->GetPoint((*key)->getPointId1(), modelPoint1);
@@ -680,15 +673,10 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
         hypo->rigid_transform = rigid_transform;
         hypo->pair_id = pair_id;
         hypo->model_entry = dbModelEntry;
-        ++hypo;
-        ++mNumOfHypotheses;
-        // Save the current object hypothesis
-        //mHypotheses.push_back(Hypothesis(rigid_transform, pair_id, dbModelEntry));
+        hypo++;
       }
     }
   }
-  //std::cout<<"Hypotheses: " << mNumOfHypotheses;
-  //mHypotheses.resize(mNumOfHypotheses, Hypothesis(0,0,0));
 }
 
 //=============================================================================================================================
@@ -703,7 +691,7 @@ void accept(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRan
   int i, k, x, y, match, penalty, num_transforms = info->num_transforms;
   const int *pair_id = info->pair_ids;
   const double_2* pixel;
-
+	
   // For all hypotheses
   for ( i = 0 ; i < num_transforms ; ++i, transform += 12 )
   {
@@ -758,7 +746,6 @@ extern void acceptCUDA(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, c
 void ObjRecRANSAC::acceptHypotheses(list<AcceptedHypothesis>& acceptedHypotheses)
 {
   boost::recursive_mutex::scoped_lock computing_lock(mComputingMutex);
-
   //[i10 Change] - When there are no Hypotheses, it makes no sense to accept them or not
   // In the original code this is not a problem since in the 'acce[t' method, it loops 0 times (0 Hypotheses!)
   // In the CUDA version this IS a problem, since we are trying to create 0 blocks per grid, which yields an error.
