@@ -597,10 +597,10 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
   printf("\r%.1lf%% done [%i hypotheses]\n", ((double)i)*factor, mNumOfHypotheses); fflush(stdout);
 #endif
 
-  mRigidTransforms.resize(12*(mHypotheses.size()));
-  mPointSetPointers.resize(mHypotheses.size());
-  mPairIds.resize(mHypotheses.size());
-  mModelEntryPointers.resize(mHypotheses.size());
+  mRigidTransforms.resize(12*(mNumOfHypotheses));
+  mPointSetPointers.resize(mNumOfHypotheses);
+  mPairIds.resize(mNumOfHypotheses);
+  mModelEntryPointers.resize(mNumOfHypotheses);
 
   double *rigid_transform = vec2a(mRigidTransforms);
   list<Hypothesis>::iterator hypo;
@@ -648,7 +648,7 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
   {
     const map<DatabaseModelEntry*, HashTableCellEntry*>& cellEntries = cells[i]->getCellEntries();
     // Check for all models in the current cell
-    for ( cell_entry = cellEntries.begin() ; cell_entry != cellEntries.end() ; cell_entry++ )
+    for ( cell_entry = cellEntries.begin() ; cell_entry != cellEntries.end() ; ++cell_entry )
     {
       dbModelEntry = (*cell_entry).first;
       model = dbModelEntry->getOwnModel();
@@ -657,7 +657,7 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
       const list<Key*>& keys = (*cell_entry).second->getKeys();
 
       // Check for all pairs which belong to the current model
-      for ( list<Key*>::const_iterator key = keys.begin() ; key != keys.end() ; key++ )
+      for ( list<Key*>::const_iterator key = keys.begin() ; key != keys.end() ; ++key )
       {
         // Get the points and the normals from the model
         model->GetPoint((*key)->getPointId1(), modelPoint1);
@@ -673,7 +673,7 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
         hypo->rigid_transform = rigid_transform;
         hypo->pair_id = pair_id;
         hypo->model_entry = dbModelEntry;
-        hypo++;
+        ++hypo;
       }
     }
   }
