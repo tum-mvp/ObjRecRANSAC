@@ -597,29 +597,29 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
   printf("\r%.1lf%% done [%i hypotheses]\n", ((double)i)*factor, mNumOfHypotheses); fflush(stdout);
 #endif
 
-  mRigidTransforms.resize(12*(mNumOfHypotheses));
+  mRigidTransforms.resize(12*mNumOfHypotheses);
   mPointSetPointers.resize(mNumOfHypotheses);
   mPairIds.resize(mNumOfHypotheses);
   mModelEntryPointers.resize(mNumOfHypotheses);
 
+  std::vector<Hypothesis>::iterator hypo_it;
   double *rigid_transform = vec2a(mRigidTransforms);
-  list<Hypothesis>::iterator hypo;
 
-  for ( i = 0, hypo = mHypotheses.begin(); hypo != mHypotheses.end(); ++i, ++hypo, rigid_transform += 12 )
+  for ( i = 0, hypo_it = mHypotheses.begin() ; hypo_it != mHypotheses.end() ; ++i, ++hypo_it, rigid_transform += 12 )
   {
-    std::cerr << "transform: " << rigid_transform << " hypo transform: " << hypo->rigid_transform << " loop counter: " << i << std::endl;
-    vec_copy12<double>(hypo->rigid_transform, rigid_transform);
-    mPointSetPointers[i] = hypo->model_entry->getOwnPointSet()->getPoints_const();
-    mPairIds[i] = hypo->pair_id;
-    mModelEntryPointers[i] = hypo->model_entry;
+    vec_copy12<double>(hypo_it->rigid_transform, rigid_transform);
+    mPointSetPointers[i] = hypo_it->model_entry->getOwnPointSet()->getPoints_const();
+    mPairIds[i] = hypo_it->pair_id;
+    mModelEntryPointers[i] = hypo_it->model_entry;
   }
 }
 
 //=============================================================================================================================
 
-void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const double* sceneNormal1,
-                                             const double* scenePoint2, const double* sceneNormal2, HashTableCell** cells,
-                                             int numOfCells, int pair_id)
+void ObjRecRANSAC::generateHypothesesForPair(
+    const double* scenePoint1, const double* sceneNormal1,
+    const double* scenePoint2, const double* sceneNormal2, HashTableCell** cells,
+    int numOfCells, int pair_id)
 {
   double modelPoint1[3], modelPoint2[3], modelNormal1[3], modelNormal2[3];
   vtkPolyData* model;
@@ -627,22 +627,6 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
   DatabaseModelEntry* dbModelEntry;
   map<DatabaseModelEntry*, HashTableCellEntry*>::const_iterator cell_entry;
   int i, model_id;
-  list<Hypothesis>::iterator hypo;
-
- //Calculate the number of hypothesis for this pair and allocate that much memory
-  int temp = mNumOfHypotheses;
-  for ( i = 0 ; i < numOfCells ; ++i )
-  {
-    for ( cell_entry = cells[i]->getCellEntries().begin() ; cell_entry !=  cells[i]->getCellEntries().end() ; ++cell_entry )
-    {
-     mNumOfHypotheses += (*cell_entry).second->getKeys().size();
-    }
-  }
-  mHypotheses.resize(mNumOfHypotheses, Hypothesis(0, 0, 0));
-  hypo = mHypotheses.begin();
-
-  //std::cerr << "Number of Hypotheses: " << mNumOfHypotheses << std::endl;
-  std::cerr << "Collective Hypotheses: " << mNumOfHypotheses << " Added this time: " << (mNumOfHypotheses - temp) << std::endl;
 
   for ( i = 0 ; i < numOfCells ; ++i )
   {
@@ -665,15 +649,21 @@ void ObjRecRANSAC::generateHypothesesForPair(const double* scenePoint1, const do
         model->GetPoint((*key)->getPointId2(), modelPoint2);
         modelNormals->GetTuple((*key)->getPointId2(), modelNormal2);
 
-        // Get the optimal rigid transform from model to scene
-        double *rigid_transform = new double[12];
-        mOptTransform.getRigidTransform(modelPoint1, modelNormal1, modelPoint2, modelNormal2,
-                                        scenePoint1, sceneNormal1, scenePoint2, sceneNormal2, rigid_transform);
+        // Add a new hypothesis
+        mNumOfHypotheses++;
+        mHypotheses.resize(mNumOfHypotheses);
+        std::vector<Hypothesis>::reverse_iterator hypo_it=mHypotheses.rbegin();
 
-        hypo->rigid_transform = rigid_transform;
-        hypo->pair_id = pair_id;
-        hypo->model_entry = dbModelEntry;
-        ++hypo;
+        // Set the hypothesis information
+        hypo_it->pair_id = pair_id;
+        hypo_it->model_entry = dbModelEntry;
+
+        // Get the optimal rigid transform from model to scene
+        mOptTransform.getRigidTransform(
+            modelPoint1, modelNormal1, modelPoint2, modelNormal2,
+            scenePoint1, sceneNormal1, scenePoint2, sceneNormal2,
+            hypo_it->rigid_transform);
+
       }
     }
   }
@@ -895,13 +885,13 @@ void ObjRecRANSAC::hypotheses2Shapes(list<AcceptedHypothesis>& hypotheses, vecto
   }
 
   // Convert each hypothesis in 'hypotheses' to a shape and save it in 'shapes'
-  for ( list<AcceptedHypothesis>::iterator hypo = hypotheses.begin() ; hypo != hypotheses.end() ; ++hypo, ++hypo_id )
+  for ( list<AcceptedHypothesis>::iterator hypo_it = hypotheses.begin() ; hypo_it != hypotheses.end() ; ++hypo_it, ++hypo_id )
   {
     // Some initializations
-    mp = (*hypo).model_entry->getOwnPointSet()->getPoints_const();
-    numOfPoints = (*hypo).model_entry->getOwnPointSet()->getNumberOfPoints();
-    rigid_transform = (*hypo).rigid_transform;
-    model_entry = (*hypo).model_entry;
+    mp = (*hypo_it).model_entry->getOwnPointSet()->getPoints_const();
+    numOfPoints = (*hypo_it).model_entry->getOwnPointSet()->getNumberOfPoints();
+    rigid_transform = (*hypo_it).rigid_transform;
+    model_entry = (*hypo_it).model_entry;
     shape.reset();
     support = 0;
     // Get the current shape id

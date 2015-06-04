@@ -150,7 +150,7 @@ protected:
 
   bool mUseAbsoluteObjSize;
 
-  list<Hypothesis> mHypotheses;
+  std::vector<Hypothesis> mHypotheses;
   std::vector<double> mRigidTransforms;
   std::vector<const double*> mPointSetPointers;
   std::vector<int> mPairIds;

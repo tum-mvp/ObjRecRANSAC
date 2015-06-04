@@ -13,16 +13,15 @@ class DatabaseModelEntry;
 class Hypothesis
 {
 public:
-	Hypothesis(double* rigid_transform, int pair_id, DatabaseModelEntry* model_entry)
-	{
-		this->rigid_transform = rigid_transform;
-		this->pair_id = pair_id;
-		this->model_entry = model_entry;
+	Hypothesis() :
+		pair_id(-1),
+    model_entry(NULL)
+	{ }
+	virtual ~Hypothesis(){ 
 	}
-	virtual ~Hypothesis(){ delete[] rigid_transform;}
 
 public:
-	double* rigid_transform;
+	double rigid_transform[12];
 	int pair_id;
 	DatabaseModelEntry* model_entry;
 };
