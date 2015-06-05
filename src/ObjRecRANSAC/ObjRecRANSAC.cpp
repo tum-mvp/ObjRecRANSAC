@@ -64,6 +64,8 @@ ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPa
 
   // Build an empty hash table
   mModelDatabase.setRelativeNumberOfPairsToKill(mRelNumOfPairsToKill);
+
+  mDoRecognitionCount = 0;
 }
 
 ObjRecRANSAC::~ObjRecRANSAC()
@@ -483,6 +485,8 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
 
 #ifdef OBJ_REC_RANSAC_PROFILE
   std::ostringstream profile_oss;
+  int generate = 0;
+  int r = 0;
   profile_oss
     <<"Profile: "
     <<std::setprecision(3)
@@ -497,8 +501,43 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
       <<std::fixed
       <<percent
       <<" \%:"<<tictoc_names[i]<<std::endl;
+    if(tictoc_names[i] == "generate hypotheses") { r = i; }
+    if(mDoRecognitionCount == 0) {
+      mProfiling[i] = tictocs[i];
+    } else {
+      mProfiling[i] += tictocs[i];
+    }
+  }
+  if(mDoRecognitionCount == 0) {
+    mHypoGenRate = mNumOfHypotheses / tictocs[r];
+  } else {
+    mHypoGenRate += mNumOfHypotheses / tictocs[r];
+  }
+  mDoRecognitionCount++;
+
+  profile_oss<<"Hypotheses generation rate: "<<(mNumOfHypotheses / tictocs[r])<<" hypotheses/second"<<std::endl;
+  profile_oss<<std::endl;
+
+  generate = 0;
+  profile_oss
+    <<"Updated Avergaes Profile: "
+    <<std::endl
+    <<"  Interations: "
+    << mDoRecognitionCount
+    <<std::endl;
+  for(int i=0; i<12; i++) {
+    double average = mProfiling[i] / mDoRecognitionCount;
+    profile_oss<<"  "
+      <<std::setprecision(3)
+      <<std::setw(7)
+      <<std::setfill(' ')
+      <<std::right
+      <<std::fixed
+      <<average
+      <<" seconds: "<<tictoc_names[i]<<std::endl;
   }
 
+  profile_oss<<"Average Hypotheses generation rate: "<<(mHypoGenRate / mDoRecognitionCount)<<" hypotheses/second"<<std::endl;
   std::cerr<<profile_oss.str()<<std::endl;
 #endif
 
@@ -594,7 +633,8 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
 #endif
   }
 #ifdef OBJ_REC_RANSAC_VERBOSE
-  printf("\r%.1lf%% done [%i hypotheses]\n", ((double)i)*factor, mNumOfHypotheses); fflush(stdout);
+  printf("\r%.1lf%% done [%i hypotheses]\n", ((double)i)*factor, mNumOfHypothesea); fflush(stdout);
+
 #endif
 
   mRigidTransforms.resize(12*mNumOfHypotheses);
@@ -612,6 +652,7 @@ void ObjRecRANSAC::generateHypotheses(const list<OrientedPair>& pairs)
     mPairIds[i] = hypo_it->pair_id;
     mModelEntryPointers[i] = hypo_it->model_entry;
   }
+  std::cerr<<"Number of Hypotheses: "<<mNumOfHypotheses<<std::endl;
 }
 
 //=============================================================================================================================

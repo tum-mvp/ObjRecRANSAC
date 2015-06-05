@@ -178,6 +178,11 @@ protected:
   std::vector<int> mIDs;
   std::vector<OctreeNode*> mLeaves;
   RandomGenerator mRandGen;
+
+  //For collecting profiling averages
+  double mHypoGenRate;
+  double mProfiling[12];
+  int mDoRecognitionCount;
 };
 
 //=== inline methods ==============================================================================================

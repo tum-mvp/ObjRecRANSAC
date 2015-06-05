@@ -148,12 +148,19 @@ int main()
 
 	// Perform the object recognition. You can call this method arbitrary often (perhaps each time with a new scene).
 	// However, do NOT forget to free the memory the pointers in the list 'detectedShapes' are pointing to after EACH call!
-	objrec.doRecognition(scene, successProbability, detectedShapes);
-	printf("%lf seconds elapsed.\n", objrec.getLastOverallRecognitionTimeSec());
 
+#ifdef RUN_MANY_TIMES
+  for (int r = 0; r < 50; r++) {
+    objrec.doRecognition(scene, successProbability, detectedShapes);
+	  printf("%lf seconds elapsed.\n", objrec.getLastOverallRecognitionTimeSec());
+  }
 	// Do something with the detected model instances, e.g., visualize them
-	visualize(detectedShapes, scene, background);
-
+	//visualize(detectedShapes, scene, background);
+#else
+  objrec.doRecognition(scene, successProbability, detectedShapes);
+  printf("%lf seconds elapsed.\n", objrec.getLastOverallRecognitionTimeSec());
+  visualize(detectedShapes, scene, background);
+#endif
 	// Cleanup
 	// Destroy the 'UserData' objects
 	for ( list<UserData*>::iterator it = userDataList.begin() ; it != userDataList.end() ; ++it ) delete *it;
