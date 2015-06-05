@@ -16,7 +16,9 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 #To print profiling info:
-add_definitions(-DOBJ_REC_RANSAC_PROFILE)
+if(OBJREC_PROFILE)
+  add_definitions(-DOBJ_REC_RANSAC_PROFILE)
+endif()
 
 SET(_ORR_CUR_     ModelDatabase.cpp ObjRecRANSAC.cpp)
 FILE(GLOB _ORR_ALGS_    Algorithms/*.cpp)

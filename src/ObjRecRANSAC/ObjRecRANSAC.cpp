@@ -325,7 +325,7 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
   tictoc_names.push_back("oriented pair sampling"); intraStopwatch.start();
   this->sampleOrientedPointPairs(&mLeaves[0], numOfIterations, mSampledPairs);
   // Save normals pair information
-  if(mDebugNormals > 0) 
+  if(mDebugNormals > 0)
   {
     pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::Normal>::Ptr orr_normals(new pcl::PointCloud<pcl::Normal>);
@@ -345,7 +345,7 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
     pcl::PCLPointCloud2 orr_oriented_points_pc2;
     pcl::toPCLPointCloud2(*orr_oriented_points, orr_oriented_points_pc2);
     pcl::io::savePCDFile(
-        str(boost::format("orr_opoints.%1%.pcd") % mDebugNormals), 
+        str(boost::format("orr_opoints.%1%.pcd") % mDebugNormals),
         orr_oriented_points_pc2);
 
     // Dense ORR sampling
@@ -375,7 +375,7 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
     pcl::concatenateFields (*points, *orr_normals, *orr_oriented_points);
     pcl::toPCLPointCloud2(*orr_oriented_points, orr_oriented_points_pc2);
     pcl::io::savePCDFile(
-        str(boost::format("orr_opoints_dense.%1%.pcd") % mDebugNormals), 
+        str(boost::format("orr_opoints_dense.%1%.pcd") % mDebugNormals),
         orr_oriented_points_pc2);
 
     // Compute normals via pcl
@@ -396,7 +396,7 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
     pcl::PCLPointCloud2 pcl_oriented_points_pc2;
     pcl::toPCLPointCloud2(*pcl_oriented_points, pcl_oriented_points_pc2);
     pcl::io::savePCDFile(
-        str(boost::format("pcl_opoints.%1%.pcd") % mDebugNormals), 
+        str(boost::format("pcl_opoints.%1%.pcd") % mDebugNormals),
         pcl_oriented_points_pc2);
 
     // Use PCL to get the normals from all the points
@@ -421,7 +421,7 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
     pcl::concatenateFields (*points, *pcl_normals, *pcl_oriented_points);
     pcl::toPCLPointCloud2(*pcl_oriented_points, pcl_oriented_points_pc2);
     pcl::io::savePCDFile(
-        str(boost::format("pcl_opoints_dense.%1%.pcd") % mDebugNormals), 
+        str(boost::format("pcl_opoints_dense.%1%.pcd") % mDebugNormals),
         pcl_oriented_points_pc2);
 
     mDebugNormals--;
@@ -722,7 +722,7 @@ void accept(ThreadInfo *info, int gMatchThresh, int gPenaltyThresh, const ORRRan
   int i, k, x, y, match, penalty, num_transforms = info->num_transforms;
   const int *pair_id = info->pair_ids;
   const double_2* pixel;
-	
+
   // For all hypotheses
   for ( i = 0 ; i < num_transforms ; ++i, transform += 12 )
   {

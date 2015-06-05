@@ -66,7 +66,7 @@ public:
   void setNormalEstimationRadius(int value){ mNormalEstimationNeighRadius = value;}
   void setIntersectionFraction(double value){ mIntersectionFraction = value;}
   void setNumberOfThreads(int numOfThreads){ mNumOfThreads = numOfThreads;}
-  void setUseCUDA(bool useCUDA){ 
+  void setUseCUDA(bool useCUDA){
 #ifdef USE_CUDA
     mUseCUDA = useCUDA;
 #else
