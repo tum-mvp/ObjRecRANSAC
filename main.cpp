@@ -39,7 +39,7 @@ using namespace std;
 
 void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPolyDataReader*>& readers);
 void loadModelsAachen(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPolyDataReader*>& readers);
-void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoints* scene, vtkPoints* background);
+void visualize(list<PointSetShape*>& detectedShapes, vtkPoints* scene, vtkPoints* background);
 
 //=========================================================================================================================
 
@@ -61,7 +61,7 @@ int main()
 
 	// Create the main object
 	ObjRecRANSAC objrec(pairWidth, voxelSize, 0.5/*leave this one like this*/);
-
+        
 	// Some lists
 	list<UserData*> userDataList; // Look inside the next function to see how to use this list
 	list<vtkPolyDataReader*> readers; // This is just to delete the readers at the end
@@ -98,7 +98,7 @@ int main()
 	// This list will contain the model instances which are detected in the scene. After the object detection has been
 	// performed, use the 'getUserData()' method for each 'PointSetShape' in the list in order to know which is the
 	// object you are currently considering.
-	list<boost::shared_ptr<PointSetShape> > detectedShapes;
+	list<PointSetShape*> detectedShapes;
 
 	// Now the (optional) scene pre-processing takes place followed by the object recognition.
 
@@ -114,7 +114,7 @@ int main()
 	// 180° around the x or y axis.
 	vtkPolyDataReader* sceneReader = vtkPolyDataReader::New();
 #ifdef LOAD_STANDARD_DATA
-	  sceneReader->SetFileName("../data/table_scene.vtk");
+	  sceneReader->SetFileName("data/table_scene.vtk");
 #elif defined LOAD_AACHEN_DATA
 	  sceneReader->SetFileName("../data/RWTH-Aachen/scene6.vtk");
 #else
@@ -148,20 +148,16 @@ int main()
 
 	// Perform the object recognition. You can call this method arbitrary often (perhaps each time with a new scene).
 	// However, do NOT forget to free the memory the pointers in the list 'detectedShapes' are pointing to after EACH call!
+	objrec.doRecognition(scene, successProbability, detectedShapes);
+	printf("%lf seconds elapsed.\n", objrec.getLastOverallRecognitionTimeSec());
 
-#ifdef RUN_MANY_TIMES
-  for (int r = 0; r < 50; r++) {
-    objrec.doRecognition(scene, successProbability, detectedShapes);
-	  printf("%lf seconds elapsed.\n", objrec.getLastOverallRecognitionTimeSec());
-  }
 	// Do something with the detected model instances, e.g., visualize them
-	//visualize(detectedShapes, scene, background);
-#else
-  objrec.doRecognition(scene, successProbability, detectedShapes);
-  printf("%lf seconds elapsed.\n", objrec.getLastOverallRecognitionTimeSec());
-  visualize(detectedShapes, scene, background);
-#endif
+	visualize(detectedShapes, scene, background);
+
 	// Cleanup
+	// Destroy the detected shapes
+	for ( list<PointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
+		delete *it;
 	// Destroy the 'UserData' objects
 	for ( list<UserData*>::iterator it = userDataList.begin() ; it != userDataList.end() ; ++it ) delete *it;
 	// Destroy the readers
@@ -222,7 +218,7 @@ void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPol
 	userData = new UserData();
 	userData->setLabel("Amicelli"); // Just set an 'Amicelli' label
 	// Load the model
-	sprintf(fileName, "../data/Amicelli_Box.vtk");
+	sprintf(fileName, "data/Amicelli_Box.vtk");
 	vtkPolyDataReader* reader1 = vtkPolyDataReader::New();
 	reader1->SetFileName(fileName);
 	reader1->Update();
@@ -237,7 +233,7 @@ void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPol
 	userData = new UserData();
 	userData->setLabel("Rusk_Box");
 	// Load the model
-	sprintf(fileName, "../data/Rusk_Box.vtk");
+	sprintf(fileName, "data/Rusk_Box.vtk");
 	vtkPolyDataReader* reader2 = vtkPolyDataReader::New();
 	reader2->SetFileName(fileName);
 	reader2->Update();
@@ -252,7 +248,7 @@ void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPol
 	userData = new UserData();
 	userData->setLabel("Soda_Club_Bottle");
 	// Load the model
-	sprintf(fileName, "../data/Soda_Club_Bottle.vtk");
+	sprintf(fileName, "data/Soda_Club_Bottle.vtk");
 	vtkPolyDataReader* reader3 = vtkPolyDataReader::New();
 	reader3->SetFileName(fileName);
 	reader3->Update();
@@ -265,7 +261,7 @@ void loadModels(ObjRecRANSAC& objrec, list<UserData*>& userDataList, list<vtkPol
 
 //=========================================================================================================================
 
-void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoints* scene, vtkPoints* background)
+void visualize(list<PointSetShape*>& detectedShapes, vtkPoints* scene, vtkPoints* background)
 {
 	printf("Visualizing ...\n");
 
@@ -279,9 +275,9 @@ void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoint
 	list<VtkPolyData*> transformedModelList;
 
 	// Visualize the detected objects (important to look inside this loop)
-	for ( list<boost::shared_ptr<PointSetShape> >::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
+	for ( list<PointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
 	{
-		boost::shared_ptr<PointSetShape>  shape = (*it);
+		PointSetShape* shape = (*it);
 		// Which object do we have (and what confidence in the recognition result)
 		if ( shape->getUserData() )
 			printf("\t%s, confidence: %lf\n", shape->getUserData()->getLabel(), shape->getConfidence());
@@ -318,10 +314,10 @@ void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoint
 	VtkPoints* backgroundPoints = NULL;
 	if ( background )
 	{
-		backgroundPoints = new VtkPoints(background);
-		backgroundPoints->selfAdjustPointRadius();
-		backgroundPoints->setColor(0.8, 0.8, 0.8);
-		vtkwin.addToRenderer(backgroundPoints->getActor());
+            backgroundPoints = new VtkPoints(background);
+            backgroundPoints->selfAdjustPointRadius();
+            backgroundPoints->setColor(0.8, 0.8, 0.8);
+            vtkwin.addToRenderer(backgroundPoints->getActor());
 	}
 
 	// The main vtk loop
