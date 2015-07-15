@@ -20,7 +20,7 @@ ObjRecICP::~ObjRecICP()
 
 //===============================================================================================================================
 
-void ObjRecICP::doICP(ObjRecRANSAC& objrec, list<boost::shared_ptr<PointSetShape> >& detectedShapes)
+void ObjRecICP::doICP(ObjRecRANSAC& objrec, list<PointSetShape*>& detectedShapes)
 {
 	vtkPoints* scene_points = objrec.getInputScene();
 	double p[3], mat[4][4], icp_mat[4][4], **model2scene = mat_alloc(4, 4), **scene2model = mat_alloc(4, 4);
@@ -31,10 +31,10 @@ void ObjRecICP::doICP(ObjRecRANSAC& objrec, list<boost::shared_ptr<PointSetShape
 	printf("ICP refinement "); fflush(stdout);
 #endif
 
-	for ( list<boost::shared_ptr<PointSetShape> >::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
+	for ( list<PointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
 	{
 		// Get the shape
-    boost::shared_ptr<PointSetShape> shape = *it;
+		PointSetShape *shape = *it;
 		// This one will contain the shape points
 		vtkPoints *shape_points = vtkPoints::New(VTK_DOUBLE), *out = vtkPoints::New(VTK_DOUBLE);
 		  shape_points->SetNumberOfPoints((*it)->getScenePointIds().size());

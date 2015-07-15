@@ -16,8 +16,6 @@
 #include <ObjRecRANSAC/ObjRecRANSAC.h>
 #include <ObjRecRANSAC/Shapes/PointSetShape.h>
 
-#include <boost/shared_ptr.hpp>
-
 //#define OBJ_REC_ICP_PRINT_ENERGY_LEVEL
 
 class ObjRecICP
@@ -26,7 +24,7 @@ public:
 	ObjRecICP();
 	virtual ~ObjRecICP();
 
-	void doICP(ObjRecRANSAC& objrec, list<boost::shared_ptr<PointSetShape> >& detectedShapes);
+	void doICP(ObjRecRANSAC& objrec, list<PointSetShape*>& detectedShapes);
 
 	inline void setEpsilon(double value){ mEpsilon = value;}
 	inline void setTarget(vtkPolyData* target);

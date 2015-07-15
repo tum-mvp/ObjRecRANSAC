@@ -13,17 +13,18 @@ class DatabaseModelEntry;
 class Hypothesis
 {
 public:
-  Hypothesis() :
-    pair_id(-1),
-    model_entry(NULL)
-  { }
-  virtual ~Hypothesis(){
-  }
+	Hypothesis(double* rigid_transform, int pair_id, DatabaseModelEntry* model_entry)
+	{
+		this->rigid_transform = rigid_transform;
+		this->pair_id = pair_id;
+		this->model_entry = model_entry;
+	}
+	virtual ~Hypothesis(){ delete[] rigid_transform;}
 
 public:
-  double rigid_transform[12];
-  int pair_id;
-  DatabaseModelEntry* model_entry;
+	double* rigid_transform;
+	int pair_id;
+	DatabaseModelEntry* model_entry;
 };
 
 //===================================================================================================================
@@ -31,13 +32,13 @@ public:
 class AcceptedHypothesis
 {
 public:
-  AcceptedHypothesis(){ rigid_transform = NULL; match = 0; model_entry = NULL;}
-  virtual ~AcceptedHypothesis(){}
+	AcceptedHypothesis(){ rigid_transform = NULL; match = 0; model_entry = NULL;}
+	virtual ~AcceptedHypothesis(){}
 
 public:
-  double *rigid_transform;
-  int match;
-  DatabaseModelEntry* model_entry;
+	double *rigid_transform;
+	int match;
+	DatabaseModelEntry* model_entry;
 };
 
 //===================================================================================================================
