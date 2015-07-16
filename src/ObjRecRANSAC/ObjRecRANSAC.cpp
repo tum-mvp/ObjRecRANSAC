@@ -54,10 +54,10 @@ ObjRecRANSAC::ObjRecRANSAC(double pairwidth, double voxelsize, double relNumOfPa
 	mPairWidth = pairwidth;
 	mRelNumOfPairsInTheHashTable = 1.0;
 
-	mRigidTransforms = NULL;
-	mPointSetPointers = NULL;
-	mPairIds = NULL;
-	mModelEntryPointers = NULL;
+	//mRigidTransforms = NULL;
+	//mPointSetPointers = NULL;
+	//mPairIds = NULL;
+	//mModelEntryPointers = NULL;
 
 	mICPRefinement = true;
   mICPEpsilon = 0.0015;
@@ -548,67 +548,11 @@ int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, lis
   profile_oss<<"Average Hypotheses generation rate: "<<(mHypoGenRate / mDoRecognitionCount)<<" hypotheses/second"<<std::endl;
   std::cerr<<profile_oss.str()<<std::endl;
 #endif
+}
 
 //=============================================================================================================================
 // Modified recognition
 //=============================================================================================================================
-int ObjRecRANSAC::doRecognition(vtkPoints* scene, const list<ObjRecRANSAC::OrientedPair> &PairFeas, list<PointSetShape*>& out)
-{
-    if ( scene->GetNumberOfPoints() <= 0 )
-        return -1;
-    
-    mInputScene = scene;
-    this->init_rec(scene);
-    mOccupiedPixelsByShapes.clear();
-    mSampledPairs = PairFeas;
-    
-    list<AcceptedHypothesis> accepted_hypotheses;
-    list<ORRPointSetShape*> detectedShapes;
-    
-    // Generate the object hypotheses
-    this->generateHypotheses(mSampledPairs);
-    // Accept hypotheses
-    this->acceptHypotheses(accepted_hypotheses);
-    std::cerr << "Accept: " << accepted_hypotheses.size() << std::endl;
-    
-    // Convert the accepted hypotheses to shapes
-    this->hypotheses2Shapes(accepted_hypotheses, mShapes);
-    
-    // Filter the weak hypotheses
-    this->gridBasedFiltering(mShapes, detectedShapes);
-    
-    std::cerr << "Detection: " << detectedShapes.size() << std::endl;
-    // Save the shapes in 'out'
-    for ( list<ORRPointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
-    {
-        PointSetShape* shape = new PointSetShape(*it);
-        // Save the new created shape
-        out.push_back(shape);
-    
-        // Get the nodes of the current shape
-        list<OctreeNode*>& nodes = (*it)->getOctreeSceneNodes();
-        // For all nodes of the current shape
-        for ( list<OctreeNode*>::iterator node = nodes.begin() ; node != nodes.end() ; ++node )
-        {
-            ORROctreeNodeData* data = (ORROctreeNodeData*)(*node)->getData();
-            // Get the ids from the current node
-            for ( list<int>::iterator id = data->getPointIds().begin() ; id != data->getPointIds().end() ; ++id )
-                shape->getScenePointIds().push_back(*id);
-        }
-    }
-    // Cleanup
-    accepted_hypotheses.clear();
-    
-    if ( mICPRefinement )
-    {
-        ObjRecICP objrec_icp;
-        objrec_icp.setEpsilon(1e-3);
-        objrec_icp.doICP(*this, out);
-    }
-    
-    return 0;
-}
-
 int ObjRecRANSAC::getHypotheses(vtkPoints* scene, double successProbability, list<AcceptedHypothesis> &acc_hypotheses)
 {
     if ( scene->GetNumberOfPoints() <= 0 )
@@ -657,159 +601,6 @@ int ObjRecRANSAC::getHypotheses(vtkPoints* scene, double successProbability, lis
     
     delete[] leaves;
     
-    return 0;
-}
-
-int ObjRecRANSAC::FilterHypotheses(vtkPoints* scene, list<AcceptedHypothesis> &acc_hypotheses, list<PointSetShape*>& out)
-{
-    if ( scene->GetNumberOfPoints() <= 0 )
-        return -1;
-    
-    mInputScene = scene;
-    
-    if ( mSceneOctree )
-    {
-        delete mSceneOctree;
-        mSceneOctree = NULL;
-    }
-
-    if ( mPointSetPointers ){ delete[] mPointSetPointers; mPointSetPointers = NULL;}
-    if ( mPairIds ){ delete[] mPairIds; mPairIds = NULL;}
-    
-    for ( unsigned int i = 0 ; i < mShapes.size() ; ++i )
-        delete mShapes[i];
-    mShapes.clear();
-
-    for ( list<Hypothesis*>::iterator it = mHypotheses.begin() ; it != mHypotheses.end() ; ++it )
-        delete *it;
-    mHypotheses.clear();
-    mSampledPairs.clear();
-    
-    this->buildSceneOctree(scene, mVoxelSize);
-    mSceneRangeImage.buildFromOctree(mSceneOctree, mAbsZDistThresh, mAbsZDistThresh);
-    mNumOfHypotheses = 0;
-    
-    //this->init_rec(scene);
-    mOccupiedPixelsByShapes.clear();
-     
-    vector<ORRPointSetShape*> acc_shapes;
-    this->hypotheses2Shapes(acc_hypotheses, acc_shapes);
-    list<ORRPointSetShape*> detectedShapes;
-    
-    // Filter the weak hypotheses
-    this->gridBasedFiltering(acc_shapes, detectedShapes);
-    
-    // Save the shapes in 'out'
-    for ( list<ORRPointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
-    {
-        PointSetShape* shape = new PointSetShape(*it);
-        // Save the new created shape
-        out.push_back(shape);
-
-        // Get the nodes of the current shape
-        list<OctreeNode*>& nodes = (*it)->getOctreeSceneNodes();
-        // For all nodes of the current shape
-        for ( list<OctreeNode*>::iterator node = nodes.begin() ; node != nodes.end() ; ++node )
-        {
-            ORROctreeNodeData* data = (ORROctreeNodeData*)(*node)->getData();
-            // Get the ids from the current node
-            for ( list<int>::iterator id = data->getPointIds().begin() ; id != data->getPointIds().end() ; ++id )
-                shape->getScenePointIds().push_back(*id);
-        }
-    }
-    
-    // ICP Refinement
-    if ( mICPRefinement )
-    {
-        ObjRecICP objrec_icp;
-        objrec_icp.setEpsilon(1e-3);
-        objrec_icp.doICP(*this, out);
-    }
-
-    return 0;
-    
-}
-
-int ObjRecRANSAC::doRecognition(vtkPoints* scene, double successProbability, list<PointSetShape*>& out)
-{
-    if ( scene->GetNumberOfPoints() <= 0 )
-        return -1;
-
-    mInputScene = scene;
-    this->init_rec(scene);
-    mOccupiedPixelsByShapes.clear();
-
-    int i, numOfIterations = this->computeNumberOfIterations(successProbability, (int)scene->GetNumberOfPoints());
-    vector<OctreeNode*>& fullLeaves = mSceneOctree->getFullLeafs();
-
-    if ( (int)fullLeaves.size() < numOfIterations )
-            numOfIterations = (int)fullLeaves.size();
-
-    OctreeNode** leaves = new OctreeNode*[numOfIterations];
-    RandomGenerator randgen;
-
-    list<AcceptedHypothesis> accepted_hypotheses;
-    list<ORRPointSetShape*> detectedShapes;
-
-    vector<int> ids; ids.reserve(fullLeaves.size());
-    for ( i = 0 ; i < (int)fullLeaves.size() ; ++i ) 
-        ids.push_back(i);
-    
-    for ( i = 0 ; i < numOfIterations ; ++i )
-    {
-        // Choose a random position within the array of ids
-        int rand_pos = randgen.getRandomInteger(0, ids.size() - 1);
-        // Get the id at that random position
-        leaves[i] = fullLeaves[ids[rand_pos]];
-        // Delete the selected id
-        ids.erase(ids.begin() + rand_pos);
-    }
-
-    // Sample the oriented point pairs
-    this->sampleOrientedPointPairs(leaves, numOfIterations, mSampledPairs);
-    // Generate the object hypotheses
-    this->generateHypotheses(mSampledPairs);
-    // Accept hypotheses
-    this->acceptHypotheses(accepted_hypotheses);
-    
-    // Convert the accepted hypotheses to shapes
-    std::vector<ORRPointSetShape*> acc_shapes;
-    this->hypotheses2Shapes(accepted_hypotheses, acc_shapes);   //mShapes);
-    
-    // Filter the weak hypotheses
-    this->gridBasedFiltering(acc_shapes, detectedShapes);
-    
-    // Save the shapes in 'out'
-    for ( list<ORRPointSetShape*>::iterator it = detectedShapes.begin() ; it != detectedShapes.end() ; ++it )
-    {
-        PointSetShape* shape = new PointSetShape(*it);
-        // Save the new created shape
-        out.push_back(shape);
-
-        // Get the nodes of the current shape
-        list<OctreeNode*>& nodes = (*it)->getOctreeSceneNodes();
-        // For all nodes of the current shape
-        for ( list<OctreeNode*>::iterator node = nodes.begin() ; node != nodes.end() ; ++node )
-        {
-            ORROctreeNodeData* data = (ORROctreeNodeData*)(*node)->getData();
-            // Get the ids from the current node
-            for ( list<int>::iterator id = data->getPointIds().begin() ; id != data->getPointIds().end() ; ++id )
-                shape->getScenePointIds().push_back(*id);
-        }
-    }
-    
-    // Cleanup
-    delete[] leaves;
-    accepted_hypotheses.clear();
-    
-    // ICP Refinement
-    if ( mICPRefinement )
-    {
-        ObjRecICP objrec_icp;
-        objrec_icp.setEpsilon(1.5);
-        objrec_icp.doICP(*this, out);
-    }
-
     return 0;
 }
 

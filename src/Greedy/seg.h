@@ -17,7 +17,7 @@ static bool mycomp(const PointT &p1, const PointT &p2)
     return p1.z <= p2.z;
 }
 
-class greedyObjRansac{
+class greedyObjRansac : public ObjRecRANSAC {
 public:
     greedyObjRansac(double pairWidth, double voxelSize = 0.03);
     ~greedyObjRansac(){}
@@ -35,10 +35,10 @@ public:
     
 private:
     std::vector<ModelT> models;
-    ObjRecRANSAC objrec;
+    //ObjRecRANSAC objrec;
     
     poseT recognizeOne(const pcl::PointCloud<myPointXYZ>::Ptr scene_xyz, pcl::PointCloud<myPointXYZ>::Ptr &rest_cloud);
-    poseT getBestModel(list<PointSetShape*>& detectedShapes);
+    poseT getBestModel(list<boost::shared_ptr<PointSetShape> >& detectedShapes);
     
     //void genPairFeas(const pcl::PointCloud<myPointXYZ>::Ptr scene_xyz, list<ObjRecRANSAC::OrientedPair> &PairFeas, float link_width = 0.07, float node_width = 0.04);
     void getPairFeas(const pcl::PointCloud<myPointXYZ>::Ptr cloud, const pcl::PointCloud<NormalT>::Ptr cloud_normals, list<ObjRecRANSAC::OrientedPair> &PairFeas, float maxDist, int num);

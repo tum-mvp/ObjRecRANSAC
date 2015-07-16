@@ -138,6 +138,10 @@ protected:
 
 public:
   list<OrientedPair> mSampledPairs;
+
+  // greedy objrec compatibility
+  int getHypotheses(vtkPoints* scene, double successProbability, list<AcceptedHypothesis> &acc_hypotheses);
+
 protected:
   ModelDatabase mModelDatabase;
   ORROctree *mSceneOctree;
@@ -167,7 +171,6 @@ protected:
   double mRelNumOfPairsToKill, mIntersectionFraction;
   bool mICPRefinement;
   double mICPEpsilon;
-
 
   // CUDA swtich
   bool mUseCUDA;
