@@ -25,14 +25,14 @@ find_package(VTK)
 
 IF(NOT VTK_FOUND)
   message(FATAL_ERROR "VTK not found. VTK is not installed or cmake can not find it. Install VTK first and then try again.
-If VTK is installed but cmake can not find it, set the VTK_DIR entry to the folder which contains the file VTKConfig.cmake")
+  If VTK is installed but cmake can not find it, set the VTK_DIR entry to the folder which contains the file VTKConfig.cmake")
 ENDIF(NOT VTK_FOUND)
 
 find_package(OpenCV)
 
 IF(NOT OpenCV_FOUND)
   message(FATAL_ERROR "OpenCV not found. OpenCV is not installed or cmake can not find it. Install OpenCV first and then try again.
-If OpenCV is installed but cmake can not find it, set the OPENCV_DIR entry to the folder which contains the file OpenCVConfig.cmake")
+  If OpenCV is installed but cmake can not find it, set the OPENCV_DIR entry to the folder which contains the file OpenCVConfig.cmake")
 ENDIF(NOT OpenCV_FOUND)
 
 find_package(PCL REQUIRED)
@@ -41,7 +41,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
+  set(CMAKE_CXX_FLAGS "-Wno-deprecated -mfpmath=sse -msse -msse2 -msse3 -mssse3 -msse4.1 -O3")
 endif()
 
 IF(OPENMP_FOUND)
@@ -57,19 +57,19 @@ add_subdirectory(src/VtkBasics)
 #add_subdirectory(src/Greedy)
 
 include_directories(
-	${VTK_INCLUDE_DIRS}
-        ${PCL_INCLUDE_DIRS}
-	/usr/local/cuda/include
-	${OpenCV_INCLUDE_DIRS}
-	./src
-)
+  ${VTK_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
+  /usr/local/cuda/include
+  ${OpenCV_INCLUDE_DIRS}
+  ./src
+  )
 
 link_directories(
-	${VTK_LIBRARY_DIRS}
-        ${PCL_LIBRARY_DIRS}
-	/usr/local/cuda/lib
-	${OpenCV_LIB_DIR}
-)
+  ${VTK_LIBRARY_DIRS}
+  ${PCL_LIBRARY_DIRS}
+  /usr/local/cuda/lib
+  ${OpenCV_LIB_DIR}
+  )
 
 if(OBJREC_USE_CUDA)
   CUDA_ADD_EXECUTABLE(ObjRecRANSACRun main.cpp)

@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   utility.h
  * Author: chi
  *
@@ -20,7 +20,7 @@
 #include <vtkTransformPolyDataFilter.h>
 #include <list>
 #include <vtkNew.h>
-    
+
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/io/io.h>
@@ -55,25 +55,25 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/filters/project_inliers.h>    
+#include <pcl/filters/project_inliers.h>
 
 #include <omp.h>
-    
+
 typedef pcl::PointXYZ myPointXYZ;
 typedef pcl::PointXYZRGBA PointT;
 typedef pcl::Normal NormalT;
 
 struct ModelT{
-    pcl::PointCloud<myPointXYZ>::Ptr model_cloud;
-    pcl::PolygonMesh::Ptr model_mesh; 
-    pcl::PointCloud<myPointXYZ>::Ptr model_center;
-    std::string model_label;
+  pcl::PointCloud<myPointXYZ>::Ptr model_cloud;
+  pcl::PolygonMesh::Ptr model_mesh;
+  pcl::PointCloud<myPointXYZ>::Ptr model_center;
+  std::string model_label;
 };
 
 struct poseT{
-    std::string model_name;
-    Eigen::Vector3f shift;
-    Eigen::Quaternion<float> rotation;
+  std::string model_name;
+  Eigen::Vector3f shift;
+  Eigen::Quaternion<float> rotation;
 };
 
 int readCSV(std::string filename, std::string label, std::vector<poseT> &poses);
