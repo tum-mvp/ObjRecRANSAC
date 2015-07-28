@@ -35,12 +35,14 @@ using namespace tum;
 class ObjRecRANSAC
 {
 public:
+
   class OrientedPair
   {
   public:
     OrientedPair(const double *p1, const double *n1, const double *p2, const double *n2){
       vec_copy3(p1, this->p1); vec_copy3(n1, this->n1); vec_copy3(p2, this->p2); vec_copy3(n2, this->n2);
     }
+    OrientedPair(){}
     virtual ~OrientedPair(){}
     double p1[3], n1[3], p2[3], n2[3];
   };
@@ -67,6 +69,7 @@ public:
   void setIntersectionFraction(double value){ mIntersectionFraction = value;}
   void setNumberOfThreads(int numOfThreads){ mNumOfThreads = numOfThreads;}
   void setUseCUDA(bool useCUDA){
+
 #ifdef USE_CUDA
     mUseCUDA = useCUDA;
 #else
@@ -133,6 +136,12 @@ protected:
 
   inline void cvPolarDecomp(const double M[9], double R[9]);
 
+public:
+  list<OrientedPair> mSampledPairs;
+
+  // greedy objrec compatibility
+  int getHypotheses(vtkPoints* scene, double successProbability, list<AcceptedHypothesis> &acc_hypotheses);
+
 protected:
   ModelDatabase mModelDatabase;
   ORROctree *mSceneOctree;
@@ -145,8 +154,6 @@ protected:
   ORRRangeImage2 mSceneRangeImage;
   list<list<int>* > mOccupiedPixelsByShapes;
   vector<boost::shared_ptr<ORRPointSetShape> > mShapes;
-
-  list<OrientedPair> mSampledPairs;
 
   bool mUseAbsoluteObjSize;
 
