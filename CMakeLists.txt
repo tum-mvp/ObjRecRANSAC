@@ -19,7 +19,7 @@ ENDIF(OBJREC_USE_CUDA)
 find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
-find_package(PCL REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(VTK)
 
