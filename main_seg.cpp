@@ -1,7 +1,7 @@
 #include "src/Greedy/seg.h"
 #include <sys/time.h>
 #include <eigen3/Eigen/src/Geometry/Quaternion.h>
-#include <bits/algorithmfwd.h>
+#include <algorithm>
 
 //=========================================================================================================================
 
