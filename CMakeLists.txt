@@ -20,7 +20,7 @@ find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(PCL REQUIRED)
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 find_package(VTK)
 
 IF(NOT VTK_FOUND)
@@ -47,6 +47,7 @@ endif()
 IF(OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  add_definitions(-DUSE_OPENMP)
   message (STATUS "Found OpenMP")
 ENDIF(OPENMP_FOUND)
 
