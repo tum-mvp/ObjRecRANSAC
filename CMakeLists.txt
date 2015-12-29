@@ -1,5 +1,6 @@
 project(ObjRecRANSACRun)
 cmake_minimum_required(VERSION 2.8.3)
+cmake_policy(SET CMP0053 OLD)
 
 IF(OBJREC_USE_CUDA)
   set(OBJREC_CUDA_DEVICE_ID 1 CACHE STRING "Which GPU device to use when running")
