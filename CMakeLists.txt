@@ -78,7 +78,7 @@ else()
   add_executable(ObjRecRANSACRun main.cpp)
 endif()
 
-target_link_libraries(ObjRecRANSACRun ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt ${PCL_LIBRARIES})
+target_link_libraries(ObjRecRANSACRun ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 #add_library(Utility utility.h utility.cpp) 
 #target_link_libraries(Utility ${PCL_LIBRARIES} ${OpenCV_LIBS})
@@ -87,13 +87,20 @@ add_library(Greedy src/Greedy/utility.h src/Greedy/utility.cpp src/Greedy/seg.h 
 target_link_libraries(Greedy ${PCL_LIBRARIES} ${OpenCV_LIBS})
 
 add_executable(SegRansac main_seg.cpp)
-target_link_libraries(SegRansac ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES} rt)
+target_link_libraries(SegRansac ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 add_executable(poseTest main_test_pose.cpp)
-target_link_libraries(poseTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES} rt)
+target_link_libraries(poseTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 add_executable(segTest main_test_seg.cpp)
-target_link_libraries(segTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES} rt)
+target_link_libraries(segTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
+
+if(UNIX AND NOT APPLE)
+    target_link_libraries(ObjRecRANSACRun rt)
+    target_link_libraries(Greedy rt)
+    target_link_libraries(poseTest rt)
+    target_link_libraries(segTest rt)
+endif()
 
 install(TARGETS ObjRecRANSACRun
   RUNTIME DESTINATION bin
