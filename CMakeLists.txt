@@ -1,4 +1,5 @@
 project(ObjRecRANSACRun)
+
 cmake_minimum_required(VERSION 2.8.12)
 if(NOT EXISTS OBJREC_USE_CUDA)
   FIND_PACKAGE(CUDA)
@@ -6,6 +7,7 @@ if(NOT EXISTS OBJREC_USE_CUDA)
     set(OBJREC_USE_CUDA TRUE)
   endif()
 endif()
+cmake_policy(SET CMP0053 OLD)
 
 IF(OBJREC_USE_CUDA)
   set(OBJREC_CUDA_DEVICE_ID 1 CACHE STRING "Which GPU device to use when running")
@@ -27,7 +29,7 @@ find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(PCL REQUIRED)
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 find_package(VTK)
 
 IF(NOT VTK_FOUND)
@@ -54,6 +56,7 @@ endif()
 IF(OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  add_definitions(-DUSE_OPENMP)
   message (STATUS "Found OpenMP")
 ENDIF(OPENMP_FOUND)
 
@@ -84,7 +87,7 @@ else()
   add_executable(ObjRecRANSACRun main.cpp)
 endif()
 
-target_link_libraries(ObjRecRANSACRun ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering ${OpenCV_LIBS} rt ${PCL_LIBRARIES})
+target_link_libraries(ObjRecRANSACRun ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 #add_library(Utility utility.h utility.cpp) 
 #target_link_libraries(Utility ${PCL_LIBRARIES} ${OpenCV_LIBS})
@@ -93,13 +96,20 @@ add_library(Greedy src/Greedy/utility.h src/Greedy/utility.cpp src/Greedy/seg.h 
 target_link_libraries(Greedy ${PCL_LIBRARIES} ${OpenCV_LIBS})
 
 add_executable(SegRansac main_seg.cpp)
-target_link_libraries(SegRansac ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES} rt)
+target_link_libraries(SegRansac ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 add_executable(poseTest main_test_pose.cpp)
-target_link_libraries(poseTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES} rt)
+target_link_libraries(poseTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 add_executable(segTest main_test_seg.cpp)
-target_link_libraries(segTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics vtkIO vtkCommon vtkRendering Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES} rt)
+target_link_libraries(segTest ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
+
+if(UNIX AND NOT APPLE)
+    target_link_libraries(ObjRecRANSACRun rt)
+    target_link_libraries(Greedy rt)
+    target_link_libraries(poseTest rt)
+    target_link_libraries(segTest rt)
+endif()
 
 install(TARGETS ObjRecRANSACRun
   RUNTIME DESTINATION bin

@@ -1,4 +1,5 @@
 #include "VtkLine.h"
+#include <vtkVersion.h>
 
 VtkLine::VtkLine()
 {
@@ -24,10 +25,16 @@ void VtkLine::init(double x1, double y1, double z1, double x2, double y2, double
 
 	mLine->SetPoint1(x1, y1, z1);
 	mLine->SetPoint2(x2, y2, z2);
+
+#if VTK_MAJOR_VERSION < 6
 	mTube->SetInput(mLine->GetOutput());
+	mMapper->SetInput(mTube->GetOutput());
+#else // VTK 6
+	mTube->SetInputData(mLine->GetOutput());
+	mMapper->SetInputData(mTube->GetOutput());
+#endif
 	mTube->SetNumberOfSides(8);
 	mTube->SetRadius(radius);
-	mMapper->SetInput(mTube->GetOutput());
 	mActor->SetMapper(mMapper);
 	mActor->GetProperty()->SetColor(1.0, 0.0, 0.0);
 	mActor->SetPosition(0.0, 0.0, 0.0);

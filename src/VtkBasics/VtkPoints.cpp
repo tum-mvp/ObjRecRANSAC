@@ -1,6 +1,7 @@
 #include "VtkPoints.h"
 #include <vtkIdList.h>
 #include <vtkPointLocator.h>
+#include <vtkVersion.h>
 
 VtkPoints::VtkPoints(vtkIdList* ids, vtkPoints* input)
 {
@@ -113,7 +114,12 @@ VtkPoints::VtkPoints(vtkPolyData* input, bool colorModeByScalar)
 
 	mGlyphs->SetScaleFactor(1.0);
 	mGlyphs->SetSourceConnection(mSphereSrc->GetOutputPort());
-	mGlyphs->SetInput(mPoints);
+
+#if VTK_MAJOR_VERSION < 6
+	mGlyphs->SetInput(in);
+#else // VTK 6
+	mGlyphs->SetInputData(mPoints);
+#endif
 
 	if ( colorModeByScalar )
 	{
@@ -159,7 +165,12 @@ void VtkPoints::init(vtkPoints *input)
 	mGlyphs->ScalingOn();
 	mGlyphs->SetScaleFactor(1.0);
 	mGlyphs->SetSourceConnection(mSphereSrc->GetOutputPort());
+
+#if VTK_MAJOR_VERSION < 6
 	mGlyphs->SetInput(mPoints);
+#else // VTK 6
+	mGlyphs->SetInputData(mPoints);
+#endif
 
 	mMapper->ScalarVisibilityOff();
 	mMapper->SetInputConnection(mGlyphs->GetOutputPort());

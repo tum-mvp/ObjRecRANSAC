@@ -57,7 +57,9 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/project_inliers.h>
 
+#ifdef USE_OPENMP
 #include <omp.h>
+#endif // USE_OPENMP
 
 typedef pcl::PointXYZ myPointXYZ;
 typedef pcl::PointXYZRGBA PointT;

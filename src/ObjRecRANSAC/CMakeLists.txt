@@ -1,6 +1,6 @@
 project(ObjRecRANSAC)
 cmake_minimum_required(VERSION 2.6)
-
+cmake_policy(SET CMP0053 OLD)
 find_package(VTK)
 
 IF(NOT VTK_FOUND)
@@ -114,6 +114,13 @@ else()
     @_ORR_SH_@
   )
   set_target_properties(ObjRecRANSACStatic PROPERTIES OUTPUT_NAME ObjRecRANSAC)
+
+
+  find_package(PythonLibs)
+  if(PYTHONLIBS_FOUND)
+      target_link_libraries(ObjRecRANSAC  ${PYTHON_LIBRARIES})
+      target_link_libraries(ObjRecRANSACStatic  ${PYTHON_LIBRARIES})
+  endif()
 endif()
 
 install(TARGETS ObjRecRANSAC ObjRecRANSACStatic

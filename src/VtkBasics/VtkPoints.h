@@ -10,6 +10,7 @@
 #include <vtkPolyData.h>
 #include <vtkProperty.h>
 #include <vtkIdList.h>
+#include <vtkVersion.h>
 #include <list>
 
 using namespace std;
@@ -33,7 +34,11 @@ public:
 	/** Inherited from 'VtkObject' */
 	vtkPolyData* getPolyData(){ return mPoints;}
 
+#if VTK_MAJOR_VERSION < 6
 	void updateGlyphsGeometry(){ mPoints->Update(); mGlyphs->Update(); mSphereSrc->Update();}
+#else // VTK 6
+	void updateGlyphsGeometry(){ mMapper->Update(); mGlyphs->Update(); mSphereSrc->Update();}
+#endif
 
 	double getNextPointMeanDistance();
 	void setColor(double r, double g, double b){ mActor->GetProperty()->SetColor(r, g, b);}

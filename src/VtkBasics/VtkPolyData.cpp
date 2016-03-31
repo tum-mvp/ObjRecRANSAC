@@ -3,6 +3,7 @@
 #include <vtkDataArray.h>
 #include <vtkDoubleArray.h>
 #include <vtkPointData.h>
+#include <vtkVersion.h>
 
 
 VtkPolyData::VtkPolyData(vtkPolyData *polyData)
@@ -19,7 +20,12 @@ VtkPolyData::VtkPolyData(vtkPolyData *polyData)
 	}
 
 	mMapper = vtkPolyDataMapper::New();
+
+#if VTK_MAJOR_VERSION < 6
 	mMapper->SetInput(mPolyData);
+#else // VTK 6
+	mMapper->SetInputData(mPolyData);
+#endif
 
 	mActor = vtkActor::New();
 	mActor->SetMapper(mMapper);
