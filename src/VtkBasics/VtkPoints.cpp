@@ -116,7 +116,7 @@ VtkPoints::VtkPoints(vtkPolyData* input, bool colorModeByScalar)
 	mGlyphs->SetSourceConnection(mSphereSrc->GetOutputPort());
 
 #if VTK_MAJOR_VERSION < 6
-	mGlyphs->SetInput(in);
+	mGlyphs->SetInput(input);
 #else // VTK 6
 	mGlyphs->SetInputData(mPoints);
 #endif
