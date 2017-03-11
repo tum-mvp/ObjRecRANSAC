@@ -1,6 +1,12 @@
-project(ObjRecRANSACRun)
+project(objrecransac)
 
 cmake_minimum_required(VERSION 2.8.12)
+
+
+
+# optional for ROS build https://github.com/catkin/catkin_tools
+find_package(catkin)
+
 if(NOT EXISTS OBJREC_USE_CUDA)
   FIND_PACKAGE(CUDA)
   if(CUDA_FOUND)
@@ -24,6 +30,18 @@ IF(OBJREC_USE_CUDA)
   #add_definitions(-DOBJ_REC_RANSAC_VERBOSE_1)
   #add_definitions(-DOBJ_REC_RANSAC_VERBOSE_2)
 ENDIF()
+
+if(CATKIN_FOUND)
+    option(BUILD_ROS_BINDING "Build ROS Bindings using catkin" ON)
+    catkin_package(
+          DEPENDS # none
+          CATKIN_DEPENDS # none
+          INCLUDE_DIRS src include
+          LIBRARIES ObjRecRANSAC
+      )
+else()
+    option(BUILD_ROS_BINDING "Build ROS Bindings using catkin" OFF)
+endif()
 
 find_package(Boost COMPONENTS thread system REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -93,7 +111,7 @@ target_link_libraries(ObjRecRANSACRun ObjRecRANSAC BasicToolsL1 BasicTools VtkBa
 #target_link_libraries(Utility ${PCL_LIBRARIES} ${OpenCV_LIBS})
 
 add_library(Greedy src/Greedy/utility.h src/Greedy/utility.cpp src/Greedy/seg.h src/Greedy/seg.cpp) 
-target_link_libraries(Greedy ${PCL_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(Greedy ObjRecRANSAC ${PCL_LIBRARIES} ${OpenCV_LIBS})
 
 add_executable(SegRansac main_seg.cpp)
 target_link_libraries(SegRansac ObjRecRANSAC BasicToolsL1 BasicTools VtkBasics ${VTK_LIBRARIES} Greedy ${OpenCV_LIBS} ${PCL_LIBRARIES})
@@ -111,20 +129,42 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(segTest rt)
 endif()
 
-install(TARGETS ObjRecRANSACRun
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib)
 
-install(DIRECTORY src/
-  DESTINATION include
-  PATTERN "*.cpp" EXCLUDE
-  PATTERN "*.cu" EXCLUDE
-  PATTERN "*.c" EXCLUDE
-  )
+if(NOT BUILD_ROS_BINDING)
+    # STANDARD INSTALLATION
+    install(TARGETS ObjRecRANSACRun
+      RUNTIME DESTINATION bin
+      LIBRARY DESTINATION lib
+      ARCHIVE DESTINATION lib)
 
-install(DIRECTORY data
-  DESTINATION share/ObjRecRANSAC)
+    install(DIRECTORY src/
+      DESTINATION include
+      PATTERN "*.cpp" EXCLUDE
+      PATTERN "*.cu" EXCLUDE
+      PATTERN "*.c" EXCLUDE
+      )
 
-install(FILES package.xml
-  DESTINATION share/ObjRecRANSAC)
+      install(DIRECTORY data
+        DESTINATION share/ObjRecRANSAC)
+
+      install(FILES package.xml
+        DESTINATION share/ObjRecRANSAC)
+        
+elseif(BUILD_ROS_BINDING)
+    # CATKIN INSTALLATION
+    install(DIRECTORY src/
+            DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+            PATTERN "*.cpp" EXCLUDE
+            PATTERN "*.cu" EXCLUDE
+            PATTERN "*.c" EXCLUDE
+    )
+
+    install(DIRECTORY data
+      DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+    install(FILES package.xml
+      DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+    
+endif()
+
+
