@@ -1,6 +1,6 @@
 project(VtkBasics)
 cmake_minimum_required(VERSION 2.6)
-
+cmake_policy(SET CMP0053 OLD)
 find_package(VTK)
 
 IF(NOT VTK_FOUND)
@@ -25,6 +25,16 @@ add_library(VtkBasics SHARED
 add_library(VtkBasicsStatic STATIC
   @_VTK_@
 )
+
+target_link_libraries(VtkBasics  ${VTK_LIBRARIES})
+target_link_libraries(VtkBasicsStatic  ${VTK_LIBRARIES})
+
+find_package(PythonLibs)
+if(PYTHONLIBS_FOUND)
+    target_link_libraries(VtkBasics  ${PYTHON_LIBRARIES})
+    target_link_libraries(VtkBasicsStatic  ${PYTHON_LIBRARIES})
+endif()
+
 set_target_properties(VtkBasicsStatic PROPERTIES OUTPUT_NAME VtkBasics)
 
 install(TARGETS VtkBasics VtkBasicsStatic 

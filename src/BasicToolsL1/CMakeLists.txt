@@ -1,5 +1,6 @@
 project(BasicToolsL1)
 cmake_minimum_required(VERSION 2.6)
+cmake_policy(SET CMP0053 OLD)
 
 FILE(GLOB _BTL1_CUR_     *.cpp)
 FILE(GLOB _BTL1_EIG3x3_  eigen3x3/*.cpp)

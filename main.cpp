@@ -27,6 +27,7 @@
 #include <vtkPolyData.h>
 #include <vtkPolyDataReader.h>
 #include <vtkTransformPolyDataFilter.h>
+#include <vtkVersion.h>
 #include <list>
 
 using namespace std;
@@ -293,7 +294,12 @@ void visualize(list<boost::shared_ptr<PointSetShape> >& detectedShapes, vtkPoint
 
 		// Transform the model instance using the estimated rigid transform
 		vtkTransformPolyDataFilter *transformer = vtkTransformPolyDataFilter::New();
+
+#if VTK_MAJOR_VERSION < 6
 		  transformer->SetInput(shape->getHighResModel());
+#else // VTK 6
+		  transformer->SetInputData(shape->getHighResModel());
+#endif
 		  VtkTransform::mat4x4ToTransformer((const double**)mat4x4, transformer);
 
 		// Visualize the transformed model

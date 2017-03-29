@@ -1,5 +1,6 @@
 project(BasicTools)
 cmake_minimum_required(VERSION 2.6)
+cmake_policy(SET CMP0053 OLD)
 
 find_package(VTK)
 
@@ -43,7 +44,7 @@ add_library(BasicTools SHARED
 	@_STOCH_@
 	@_MYVTK_@
 )
-target_link_libraries(BasicTools vtkRendering)
+target_link_libraries(BasicTools ${VTK_LIBRARIES})
 
 add_library(BasicToolsStatic STATIC
 	@_AUX_@
