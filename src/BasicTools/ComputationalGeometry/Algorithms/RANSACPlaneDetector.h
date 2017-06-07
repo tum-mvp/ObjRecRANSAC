@@ -82,7 +82,7 @@ inline int RANSACPlaneDetector::computeNumberOfIterations(int numberOfPoints, in
 inline void RANSACPlaneDetector::randomlyGet3Points(vtkPoints* points, double p1[3], double p2[3], double p3[3])
 {
 	// Some variables
-	int id1, id2, id3, range[2] = {0, points->GetNumberOfPoints()-1};
+	int id1, id2, id3, range[2] = {0, static_cast<int>(points->GetNumberOfPoints())-1};
 
 	// Get first id
 	id1 = mRandGen.getRandomInteger(range);
